@@ -40,7 +40,7 @@ class DesperateDuke(Bot):
         return prioritized[-1]
 
     def exchange(self, drawn):
-        prioritized = self._prioritize(self.hidden + list(drawn))
+        prioritized = self._prioritize(list(self.hidden) + list(drawn))
         return prioritized[-2:]
 
     def reveal(self, challenger, action, character, taret):
