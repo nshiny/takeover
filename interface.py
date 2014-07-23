@@ -9,11 +9,8 @@ class Character(Enum):
     captain = 4
     contessa = 5
 
-    def blocks(self):
-        if self not in blocked_actions:
-            return None
-        
-        return blocked_actions[self]
+    def short(self):
+        return short_characters[self]
 
 
 class Action(Enum):
@@ -47,6 +44,13 @@ class Action(Enum):
             return False
         
         return blocked_actions[character] == self
+
+
+short_characters = {Character.duke : "Dk",
+                    Character.assassin : "As",
+                    Character.ambassador : "Am",
+                    Character.captain : "Cp",
+                    Character.contessa : "Cn"}
 
 
 required_characters = {Action.tax : Character.duke,
