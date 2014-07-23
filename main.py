@@ -1,16 +1,13 @@
 # TODO: Wrap bot invocations in exception handling with warnings.
 # TODO: Match output suitable for analysis.
-# TODO: Flag to disable debug and warning printing.
 # TODO: Paramater to force certain bots into the matches.
 # TODO: Select bots without replacement when there are enough.
-# TODO: Optimize deepcopy by doing it less.
-# TODO: Consider removing update_state calls when state hasn't changed.
 
-from copy import deepcopy
 from enum import Enum
 from itertools import cycle
 
 import random
+import time
 import os
 import sys
 
@@ -19,11 +16,16 @@ from interface import Action, TargetedAction, Character, PlayerState
 
 
 class Log:
+    def __init__(self):
+        self.print = True
+    
     def warn(self, *args):
-        print("Warning: " + self._format(*args))
+        if self.print:
+            print("Warning: " + self._format(*args))
 
     def debug(self, *args):
-        print(self._format(*args))
+        if self.print:
+            print(self._format(*args))
               
     def _format(self, *args):
         parts = []
@@ -170,7 +172,7 @@ class Player:
         self._bot.notify_flip(player, flipped)
 
     def update_state(self, states):
-        self._bot.update_state(deepcopy(states), deepcopy(self.hidden))
+        self._bot.update_state(states[:], tuple(self.hidden))
     
     def flip(self):
         result = self._bot.flip()
@@ -186,7 +188,7 @@ class Player:
             log.debug(self, "loses")
 
     def exchange(self, drawn):
-        result = self._bot.exchange(deepcopy(drawn))
+        result = self._bot.exchange(tuple(drawn))
 
         if not isinstance(result, list):
             log.warn(self, "exchange did not return a list")
@@ -235,12 +237,15 @@ class Match:
             self._bots.append(module.make_bot(index))
 
     def repeat(self, count):
+        started = time.clock()
         winners = []
         for x in range(count):
             result = self.play()
             if result is not None:
                 winners.append(result)
 
+        print("")
+        print("Completed in " + str(int(time.clock() - started)) + " seconds")
         print("")
         for i, x in enumerate(self._bots):
             wins = sum(1 for w in winners if w.identifier == i)
@@ -403,7 +408,7 @@ class Match:
             player.notify_flip(self.identifier(flipper), flipped)
     
     def update_state(self):
-        states = [PlayerState(x.identifier, x.coins, x.flipped)
+        states = [PlayerState(x.identifier, x.coins, tuple(x.flipped))
                   for x in self.players]
         for player in self.players:
             player.update_state(states)
