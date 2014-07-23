@@ -1,14 +1,13 @@
 # TODO: Wrap bot invocations in exception handling with warnings.
 # TODO: Match output suitable for analysis.
-# TODO: Better debug printing.
 # TODO: Flag to disable debug and warning printing.
 # TODO: Paramater to force certain bots into the matches.
 # TODO: Select bots without replacement when there are enough.
-# TODO: Better debug and warning functions.
 # TODO: Optimize deepcopy by doing it less.
 # TODO: Consider removing update_state calls when state hasn't changed.
 
 from copy import deepcopy
+from enum import Enum
 from itertools import cycle
 
 import random
@@ -17,6 +16,42 @@ import sys
 
 sys.path.insert(0, "bots")
 from interface import Action, TargetedAction, Character, PlayerState, Bot
+
+
+class Log:
+    def warn(self, *args):
+        print("Warning: " + self._format(*args))
+
+    def debug(self, *args):
+        print(self._format(*args))
+              
+    def _format(self, *args):
+        parts = []
+        for arg in args:
+            if isinstance(arg, Player):
+                parts.append(self._player(arg))
+            elif isinstance(arg, Enum):
+                parts.append(arg.name.capitalize())
+            else:
+                parts.append(str(arg))
+        return " ".join(parts)
+
+    def _player(self, player):
+        text = player.name + "@" + str(player.identifier)
+        text += "[" + str(player.coins) + "]"
+        text += "[" + ",".join([self._short(x) for x in player.hidden]) + "]"
+        text += "[" + ",".join([self._short(x) for x in player.flipped]) + "]"
+        return text
+
+    def _short(self, character):
+        short = {Character.duke : "Dk",
+                 Character.assassin : "As",
+                 Character.ambassador : "Am",
+                 Character.captain : "Cp",
+                 Character.contessa : "Cn"}
+        return short[character]
+    
+log = Log()
 
 
 class Deck:
@@ -52,9 +87,6 @@ class Player:
         self.flipped = []
         self.hidden = drawn
 
-    def __str__(self):
-        return self.name + " (" + str(self.identifier) + ")"
-
     @property
     def active(self):
         return len(self.flipped) < 2
@@ -70,29 +102,29 @@ class Player:
 
         if (not isinstance(result, TargetedAction) or
             not isinstance(result.action, Action)):
-            warn(self, "take_action returned an invalid type")
+            log.warn(self, "take_action returned an invalid type")
             return self.default_action()
 
         if result.action is Action.block:
-            warn(self, "take_action specified block")
+            log.warn(self, "take_action specified block")
             return self.default_action()
         
         if result.target is not None and result.target not in valid_targets:
-            warn(self, "take_action specified an invalid target")
+            log.warn(self, "take_action specified an invalid target")
             return self.default_action()
 
         target_required = [Action.coup, Action.assassinate, Action.extort]
         if result.target is None and result.action in target_required:
-            warn(self, "take_action did not specify a target")
+            log.warn(self, "take_action did not specify a target")
             return self.default_action()
 
         minimum_coin = {Action.coup : 7, Action.assassinate: 3}
         if minimum_coin.get(result.action, 0) > self.coins:
-            warn(self, "take_action returned an unfunded mandate")
+            log.warn(self, "take_action returned an unfunded mandate")
             return self.default_action()
 
         if self.coins >= 10 and result.action != Action.coup:
-            warn(self, "take_action did not coup with more than 10 coins")
+            log.warn(self, "take_action did not coup with more than 10 coins")
             return self.default_action()
     
         return result
@@ -108,11 +140,11 @@ class Player:
         result = self._bot.block_action(actor, action, character, target)
 
         if result is not None and not isinstance(result, Character):
-            warn(self, "block_action returned an invalid character")
+            log.warn(self, "block_action returned an invalid character")
             return None
 
         if not action.blockable(result):
-            warn(self, "block_action returned an illegal character")
+            log.warn(self, "block_action returned an illegal character")
             return None
 
         return result
@@ -121,7 +153,7 @@ class Player:
         result = self._bot.challenge(actor, action, character, target)
 
         if not isinstance(result, bool):
-            warn(self, "challenge returned an invalid bool")
+            log.warn(self, "challenge returned an invalid bool")
             return False
 
         return result
@@ -143,41 +175,41 @@ class Player:
     def flip(self):
         result = self._bot.flip()
         if not isinstance(result, Character) or result not in self.hidden:
-            warn(self, "flip returned an invalid character")
+            log.warn(self, "flip returned an invalid character")
             result = self.hidden[0]
 
-        debug(self, "flips " + str(result))
+        log.debug(self, "flips", result)
         self.hidden.remove(result)
         self.flipped.append(result)
 
         if len(self.hidden) == 0:
-            debug(self, "loses")
+            log.debug(self, "loses")
 
     def exchange(self, drawn):
         result = self._bot.exchange(deepcopy(drawn))
 
         if not isinstance(result, list):
-            warn(self, "exchange did not return a list")
+            log.warn(self, "exchange did not return a list")
             return drawn
         elif len(result) != 2:
-            warn(self, "exchange returned a list not of length 2")
+            log.warn(self, "exchange returned a list not of length 2")
             return drawn
         elif (not isinstance(result[0], Character) or
               not isinstance(result[1], Character)):
-            warn(self, "exchange returned a list without characters")
+            log.warn(self, "exchange returned a list without characters")
             return drawn
 
         merged = self.hidden + drawn
         if result[0] in merged:
             merged.remove(result[0])
         else:
-            warn(self, "exchange returned invalid characters")
+            log.warn(self, "exchange returned invalid characters")
             return drawn
 
         if result[1] in merged:
             merged.remove(result[1])
         else:
-            warn(self, "exchange returned invalid characters")
+            log.warn(self, "exchange returned invalid characters")
             return drawn
 
         self.hidden = merged
@@ -187,7 +219,7 @@ class Player:
         result = self._bot.reveal(challenger, action, character, target)
 
         if not isinstance(result, Character) or result not in self.hidden:
-            warn(self, "reveal returned an invalid character")
+            log.warn(self, "reveal returned an invalid character")
             result = self.hidden[0]
 
         return result
@@ -239,22 +271,22 @@ class Match:
         winner = None
         if len(self.active_players()) == 1:
             winner = self.active_players()[0]
-            debug(winner, "wins")
+            log.debug(winner, "wins")
         else:
             for player in self.active_players():
-                debug(player, "draws")
+                log.debug(player, "draws")
         return winner
 
     def turn(self, actor):
         valid_targets = [x.identifier for x in self.active_players()]
         action, target = actor.take_action(valid_targets)
-        
-        text = "selects " + str(action)
+
+        message = [actor, "selects", action]
         if target is not None:
             target = self.players[target]
-            text += " on " + str(target)
+            message.extend(["on", target])
         
-        debug(actor, text)
+        log.debug(*message)
 
         succeeded = True
         
@@ -321,7 +353,7 @@ class Match:
                 blocker = potential
 
         if blocker is not None:
-            debug(blocker, "blocks " + str(actor) + " with " + str(character))
+            log.debug(blocker, "blocks", actor, "with", (character))
             if not self.challenge(blocker, Action.block, character, actor):
                 sustained = True
 
@@ -338,19 +370,19 @@ class Match:
                     challenger = player
 
         if challenger is not None:
-            debug(challenger, "challenges " + str(actor))
+            log.debug(challenger, "challenges", actor)
             revealed = actor.reveal(self.identifier(challenger), action,
                                     character, self.identifier(target))
-            debug(actor, "reveals " + str(revealed))
+            log.debug(actor, "reveals", revealed)
             if character == revealed:
-                debug(actor, "wins the challenge")
+                log.debug(actor, "wins the challenge")
                 self.flip(challenger)
                 
                 actor.hidden.remove(revealed)
                 self.deck.place([revealed])
                 actor.hidden.extend(self.deck.draw(1))
             else:
-                debug(challenger, "wins the challenge")
+                log.debug(challenger, "wins the challenge")
                 actor.hidden.remove(revealed)
                 actor.flipped.append(revealed)
                 sustained = True
@@ -390,14 +422,6 @@ class Match:
             return None
 
         return player.identifier
-    
-
-def warn(player, text):
-    print("Warning: " + str(player) + " " + text)
-
-
-def debug(player, text):
-    print(str(player) + " " + text)
 
 
 def get_bots(path):
@@ -411,7 +435,7 @@ def get_bots(path):
 def main(argv):
     bots = get_bots("bots")
     match = Match([random.choice(bots) for x in range(6)])
-    match.repeat(100)
+    match.repeat(1)
 
             
 if __name__ == "__main__":
