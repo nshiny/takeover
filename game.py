@@ -293,7 +293,7 @@ class Match:
             if action == Action.income:
                 actor.coins += 1
             elif action == Action.foreign_aid:
-                if not self.block(player, action, target):
+                if not self.block(actor, action, target):
                     if actor.active:
                         actor.coins += 2
                 else:
@@ -337,7 +337,7 @@ class Match:
         if target is not None:
             players.append(target)
         else:
-            players.append(clockwise_players(actor))
+            players.extend(self.clockwise_players(actor))
             
         for potential in players:
             character = potential.block_action(
