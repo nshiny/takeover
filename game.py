@@ -5,6 +5,7 @@
 from enum import Enum
 from itertools import cycle
 
+import collections
 import random
 import time
 
@@ -179,15 +180,15 @@ class Player:
     def exchange(self, drawn):
         result = self._bot.exchange(tuple(drawn))
 
-        if not isinstance(result, list):
-            log.warn(self, "exchange did not return a list")
+        if not isinstance(result, collections.Sequence):
+            log.warn(self, "exchange did not return a sequence")
             return drawn
         elif len(result) != 2:
-            log.warn(self, "exchange returned a list not of length 2")
+            log.warn(self, "exchange returned a sequence not of length 2")
             return drawn
         elif (not isinstance(result[0], Character) or
               not isinstance(result[1], Character)):
-            log.warn(self, "exchange returned a list without characters")
+            log.warn(self, "exchange returned a sequence without characters")
             return drawn
 
         merged = self.hidden + drawn

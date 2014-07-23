@@ -126,7 +126,7 @@ class Bot:
     def exchange(self, drawn):
         """Invoked when this bot resolves an exchange action.
         Drawn is an iterable of Characters.
-        Return a list of two Characters to discard."""
+        Return a sequence of two Characters to discard."""
         pass
 
     def reveal(self, challenger, action, character, target):
