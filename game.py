@@ -13,15 +13,18 @@ from interface import Action, TargetedAction, Character, PlayerState
 
 class Log:
     def __init__(self):
-        self.print = True
+        self.verbose = True
     
     def warn(self, *args):
-        if self.print:
+        if self.verbose:
             print("Warning: " + self._format(*args))
 
-    def debug(self, *args):
-        if self.print:
+    def event(self, *args):
+        if self.verbose:
             print(self._format(*args))
+
+    def summary(self, *args):
+        print(self._format(*args)) 
               
     def _format(self, *args):
         parts = []
@@ -166,12 +169,12 @@ class Player:
             log.warn(self, "flip returned an invalid character")
             result = self.hidden[0]
 
-        log.debug(self, "flips", result)
+        log.event(self, "flips", result)
         self.hidden.remove(result)
         self.flipped.append(result)
 
         if len(self.hidden) == 0:
-            log.debug(self, "loses")
+            log.event(self, "loses")
 
     def exchange(self, drawn):
         result = self._bot.exchange(tuple(drawn))
@@ -230,13 +233,13 @@ class Match:
             if result is not None:
                 winners.append(result)
 
-        print("")
-        print("Completed in " + str(int(time.clock() - started)) + " seconds")
-        print("")
+        log.summary("")
+        log.summary("Completed in", str(int(time.clock() - started)), "seconds")
+        log.summary("")
         for i, x in enumerate(self._bots):
             wins = sum(1 for w in winners if w.identifier == i)
             name = x.__module__ + "@" + str(i)
-            print(name, str(float(wins) / float(count)))
+            log.summary(name, str(float(wins) / float(count)))
 
     def play(self):
         self.deck = Deck()
@@ -262,10 +265,10 @@ class Match:
         winner = None
         if len(self.active_players()) == 1:
             winner = self.active_players()[0]
-            log.debug(winner, "wins")
+            log.event(winner, "wins")
         else:
             for player in self.active_players():
-                log.debug(player, "draws")
+                log.event(player, "draws")
         return winner
 
     def turn(self, actor):
@@ -277,7 +280,7 @@ class Match:
             target = self.players[target]
             message.extend(["on", target])
         
-        log.debug(*message)
+        log.event(*message)
 
         succeeded = True
         
@@ -344,7 +347,7 @@ class Match:
                 blocker = potential
 
         if blocker is not None:
-            log.debug(blocker, "blocks", actor, "with", (character))
+            log.event(blocker, "blocks", actor, "with", (character))
             if not self.challenge(blocker, Action.block, character, actor):
                 sustained = True
 
@@ -361,19 +364,19 @@ class Match:
                     challenger = player
 
         if challenger is not None:
-            log.debug(challenger, "challenges", actor)
+            log.event(challenger, "challenges", actor)
             revealed = actor.reveal(self.identifier(challenger), action,
                                     character, self.identifier(target))
-            log.debug(actor, "reveals", revealed)
+            log.event(actor, "reveals", revealed)
             if character == revealed:
-                log.debug(actor, "wins the challenge")
+                log.event(actor, "wins the challenge")
                 self.flip(challenger)
                 
                 actor.hidden.remove(revealed)
                 self.deck.place([revealed])
                 actor.hidden.extend(self.deck.draw(1))
             else:
-                log.debug(challenger, "wins the challenge")
+                log.event(challenger, "wins the challenge")
                 actor.hidden.remove(revealed)
                 actor.flipped.append(revealed)
                 sustained = True
