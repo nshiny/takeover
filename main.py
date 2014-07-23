@@ -14,8 +14,8 @@ import random
 import os
 import sys
 
-sys.path.insert(0, "bots")
-from interface import Action, TargetedAction, Character, PlayerState, Bot
+sys.path.append("bots")
+from interface import Action, TargetedAction, Character, PlayerState
 
 
 class Log:
@@ -427,7 +427,6 @@ class Match:
 def get_bots(path):
     names = [x[:-3] for x in os.listdir(path) if x[-3:] == ".py"]
     names.remove("__init__")
-    names.remove("interface")
 
     return [__import__(x) for x in names]
 
