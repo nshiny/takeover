@@ -12,6 +12,7 @@ class Kerpowski(Bot):
             Character.captain:7,
             Character.ambassador:1}
         self._contessaMap = None
+        self._numExchanges = 0
 
     def update_state(self, states, hidden):
         self.states = states
@@ -42,7 +43,8 @@ class Kerpowski(Bot):
             # we have an unblockable captain!
             return TargetedAction(Action.extort, target)
         elif Character.duke not in self.hidden and allKnown.count(Character.duke) < 3:
-            if Character.ambassador in self.hidden or random.uniform(0, 1) < 0.05:
+            if (Character.ambassador in self.hidden or random.uniform(0, 1) < 0.05) and self._numExchanges < 2:
+                self._numExchanges += 1
                 return Action.exchange
             elif random.uniform(0, 1) < 0.05:
                 return Action.tax
