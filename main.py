@@ -1,7 +1,3 @@
-# TODO: Parameter to force certain bots into the matches.
-# TODO: Select bots without replacement when there are enough.
-
-
 import os
 import random
 import sys

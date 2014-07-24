@@ -1,13 +1,10 @@
-# TODO: Wrap bot invocations in exception handling with warnings.
-# TODO: Match output suitable for analysis.
-
-
 from enum import Enum
 from itertools import cycle
 
 import collections
 import random
 import time
+import traceback
 
 from interface import Action, TargetedAction, Character, PlayerState
 
@@ -87,50 +84,44 @@ class Player:
         self._bot.start()
 
     def take_action(self, valid_targets):
-        result = self._bot.take_action()
-        
+        result = self._try(self._bot.take_action)
+
         if isinstance(result, Action):
             result = TargetedAction(result, None)
 
         if (not isinstance(result, TargetedAction) or
             not isinstance(result.action, Action)):
             log.warn(self, "take_action returned an invalid type")
-            return self.default_action()
+            return self._default_action()
 
         if result.action is Action.block:
             log.warn(self, "take_action specified block")
-            return self.default_action()
+            return self._default_action()
         
         if result.target is not None and result.target not in valid_targets:
             log.warn(self, "take_action specified an invalid target")
-            return self.default_action()
+            return self._default_action()
 
         target_required = [Action.coup, Action.assassinate, Action.extort]
         if result.target is None and result.action in target_required:
             log.warn(self, "take_action did not specify a target")
-            return self.default_action()
+            return self._default_action()
 
         minimum_coin = {Action.coup : 7, Action.assassinate: 3}
         if minimum_coin.get(result.action, 0) > self.coins:
             log.warn(self, "take_action returned an unfunded mandate")
-            return self.default_action()
+            return self._default_action()
 
         if self.coins >= 10 and result.action != Action.coup:
             log.warn(self, "take_action did not coup with more than 10 coins")
-            return self.default_action()
+            return self._default_action()
     
         return result
 
-    def default_action(self):
-        # Default to slow suicide!
-        if self.coins < 10:
-            return TargetedAction(Action.income, None)
-        else:
-            return TargetedAction(Action.coup, self.identifier)
-
     def block_action(self, actor, action, character, target):
-        result = self._bot.block_action(actor, action, character, target)
-
+        result = self._try(
+            self._bot.block_action, actor, action, character, target)
+        
         if result is not None and not isinstance(result, Character):
             log.warn(self, "block_action returned an invalid character")
             return None
@@ -142,8 +133,9 @@ class Player:
         return result
 
     def challenge(self, actor, action, character, target):
-        result = self._bot.challenge(actor, action, character, target)
-
+        result = self._try(
+            self._bot.challenge, actor, action, character, target)
+        
         if not isinstance(result, bool):
             log.warn(self, "challenge returned an invalid bool")
             return False
@@ -151,25 +143,26 @@ class Player:
         return result
 
     def notify_action(self, actor, action, target, succeeded):
-        self._bot.notify_action(actor, action, target, succeeded)
+        self._try(self._bot.notify_action, actor, action, target, succeeded)
 
     def notify_block(self, blocker, character, actor, action, succeeded):
-        return self._bot.notify_block(
-            blocker, character, actor, action, succeeded)
+        self._try(self._bot.notify_block, blocker,
+                  character, actor, action, succeeded)
 
     def notify_challenge(self, challenger, actor, action,
                          character, target, sustained):
-        self._bot.notify_challenge(
-            challenger, actor, action, character, target, sustained)
+        self._try(self._bot.notify_challenge, challenger, actor,
+                  action, character, target, sustained)
 
     def notify_flip(self, player, flipped):
-        self._bot.notify_flip(player, flipped)
+        self._try(self._bot.notify_flip, player, flipped)
 
     def update_state(self, states):
-        self._bot.update_state(states[:], tuple(self.hidden))
+        self._try(self._bot.update_state, states[:], tuple(self.hidden))
     
     def flip(self):
-        result = self._bot.flip()
+        result = self._try(self._bot.flip)
+        
         if not isinstance(result, Character) or result not in self.hidden:
             log.warn(self, "flip returned an invalid character")
             result = self.hidden[0]
@@ -182,7 +175,7 @@ class Player:
             log.event(self, "loses")
 
     def exchange(self, drawn):
-        result = self._bot.exchange(tuple(drawn))
+        result = self._try(self._bot.exchange, tuple(drawn))
 
         if not isinstance(result, collections.Sequence):
             log.warn(self, "exchange did not return a sequence")
@@ -212,13 +205,28 @@ class Player:
         return result
 
     def reveal(self, challenger, action, character, target):
-        result = self._bot.reveal(challenger, action, character, target)
+        result = self._try(
+            self._bot.reveal, challenger, action, character, target)
 
         if not isinstance(result, Character) or result not in self.hidden:
             log.warn(self, "reveal returned an invalid character")
             result = self.hidden[0]
 
         return result
+
+    def _try(self, function, *args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except Exception as e:
+            log.warn(self, e)
+            log.warn(traceback.format_exc())
+
+    def _default_action(self):
+        # Default to slow suicide!
+        if self.coins < 10:
+            return TargetedAction(Action.income, None)
+        else:
+            return TargetedAction(Action.coup, self.identifier)
             
 
 class Match:
