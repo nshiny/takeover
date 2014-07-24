@@ -332,7 +332,7 @@ class Match:
             elif action == Action.extort:
                 if not self.block(actor, action, target):
                     if actor.active and target.active:
-                        count = max(target.coins, 2)
+                        count = min(target.coins, 2)
                         target.coins -= count
                         actor.coins += count
                 else:
