@@ -7,7 +7,7 @@ import random
 import sys
 
 sys.path.append("bots")
-from game import Match
+from game import Match, log
 
 
 def get_bots(path):
@@ -33,11 +33,15 @@ def select_bots(required, bots):
 
 
 def main(argv):
+    iterations = 1
+    verbose = True
     required = ["turtle_bot"]
+    
+    log.verbose = verbose
     bots = get_bots("bots")
     
     match = Match(select_bots(required, bots))
-    match.repeat(1)
+    match.repeat(iterations)
 
             
 if __name__ == "__main__":
