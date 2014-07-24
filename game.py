@@ -246,7 +246,6 @@ class Match:
             if result is not None:
                 winners.append(result)
 
-        log.summary("")
         log.summary("Completed in", str(int(time.clock() - started)), "seconds")
         log.summary("")
         for i, x in enumerate(self._bots):
@@ -283,6 +282,9 @@ class Match:
         else:
             for player in self.active_players():
                 log.event(player, "draws")
+
+        log.event("\n\n")
+        
         return winner
 
     def turn(self, actor):
@@ -405,17 +407,20 @@ class Match:
                     self.identifier(challenger), self.identifier(actor),
                     action, character, self.identifier(target), revealed)
 
-            if not sustained:
+            if sustained:
+                self.flip(actor, revealed)
+            else:
                 self.flip(challenger)
                 
         return sustained
 
-    def flip(self, flipper):
-        flipped = flipper.flip()
+    def flip(self, loser, character=None):
+        if character is None:
+            character = loser.flip()
 
         self.update_state()
         for player in self.active_players():
-            player.notify_flip(self.identifier(flipper), flipped)
+            player.notify_flip(self.identifier(loser), character)
     
     def update_state(self):
         states = [PlayerState(x.identifier, x.coins, tuple(x.flipped))
