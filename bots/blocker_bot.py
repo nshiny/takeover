@@ -16,7 +16,7 @@ class TurtleBot(Bot):
     def block_action(self, actor, action, character, target):
         if action == Action.assassinate:
            print("blocker bot: blocking assassinate")
-           #return Character.contessa
+           return Character.contessa
         return None
 
     def flip(self):
