@@ -331,7 +331,7 @@ class Match:
                 raise NotImplemented(action)
 
         self.update_state()
-        for player in self.active_players():
+        for player in self.players:
             player.notify_action(self.identifier(actor), action,
                                  self.identifier(target), succeeded)
             
