@@ -380,7 +380,6 @@ class Match:
             log.event(actor, "reveals", revealed)
             if character == revealed:
                 log.event(actor, "wins the challenge")
-                self.flip(challenger)
                 
                 actor.hidden.remove(revealed)
                 self.deck.place([revealed])
@@ -397,6 +396,9 @@ class Match:
                     self.identifier(challenger), self.identifier(actor),
                     action, character, self.identifier(target), revealed)
 
+            if not sustained:
+                self.flip(challenger)
+                
         return sustained
 
     def flip(self, flipper):
