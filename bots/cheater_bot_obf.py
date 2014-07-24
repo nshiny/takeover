@@ -22,7 +22,7 @@ if 47 - 47: oO0ooO % iI1Ii11111iIi + ii1II11I1ii1I + oO0o0ooO0 - iiIIIII1i1iI
 class o0oO0 ( Bot ) :
  def __init__ ( self , identifier ) :
   self . identifier = identifier
-  print ( "I AM: " + str ( identifier ) )
+  #print ( "I AM: " + str ( identifier ) )
   self . hidden = [ ]
   if 100 - 100: i11Ii11I1Ii1i
  def update_state ( self , states , hidden ) :
@@ -127,13 +127,13 @@ class o0oO0 ( Bot ) :
    if 50 - 50: OOOo0
    if 34 - 34: OOOo0 * II111iiii % iiIIIII1i1iI * I1IiI - OOOo0
   if len ( self . hidden ) == 0 :
-   print ( "cannot block: out of game :(" )
+   #print ( "cannot block: out of game :(" )
    if 33 - 33: OOooOOo + iI1Ii11111iIi * Ooo00oOo00o - Oo / oO0ooO % oO0o0ooO0
    if 21 - 21: Ooo00oOo00o * iIii1I11I1II1 % oO0ooO * i1IIi
    I1II1III11iii = None
    if 16 - 16: O0 - iiI1iIiI * iIii1I11I1II1 + iiIIIII1i1iI
   if I1II1III11iii != None :
-   print ( "ACTION WILLBLOCK:character: " + str ( character ) + " - action: " + str ( action ) )
+   #print ( "ACTION WILLBLOCK:character: " + str ( character ) + " - action: " + str ( action ) )
    if 50 - 50: II111iiii - ooo0Oo0 * ii11ii1ii / iiI1iIiI + OOooOOo
   return I1II1III11iii
   if 88 - 88: oO0o0ooO0 / iiI1iIiI + iiIIIII1i1iI - II111iiii / ooo0Oo0 - I1IiI
@@ -142,7 +142,7 @@ class o0oO0 ( Bot ) :
   O00ooOO = self . _setKnownStates ( )
   oo000OO00Oo = False
   if O00ooOO [ character ] == 3 :
-   print ( "can't fool me" )
+   #print ( "can't fool me" )
    oo000OO00Oo = True
   if action == Action . block and character == Character . contessa and O00ooOO [ Character . contessa ] >= 3 :
    if 51 - 51: i11Ii11I1Ii1i * OOooOOo + ii1II11I1ii1I + Ooo00oOo00o
@@ -154,7 +154,7 @@ class o0oO0 ( Bot ) :
    if 93 - 93: Ooo00oOo00o % oO0ooO . Ooo00oOo00o * iiI1iIiI % oO0o0ooO0 . II111iiii
    if 38 - 38: OOooOOo
   if oo000OO00Oo :
-   print ( "CHALLENGE:character: " + str ( character ) + " - action: " + str ( action ) + ": " + str ( oo000OO00Oo ) )
+   #print ( "CHALLENGE:character: " + str ( character ) + " - action: " + str ( action ) + ": " + str ( oo000OO00Oo ) )
    if 57 - 57: O0 / oO0ooO * iiI1iIiI / I1IiI . II111iiii
   return oo000OO00Oo
   if 26 - 26: iiIIIII1i1iI
