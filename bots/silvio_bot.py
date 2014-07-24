@@ -13,6 +13,9 @@ class SilvioBot(Bot):
         self.states = states
         self.hidden = hidden
 
+    def start(self):
+        self.turn = 0
+        
     def notify_flip(self, player, flipped):
         pass
 
@@ -22,11 +25,14 @@ class SilvioBot(Bot):
         if Action.extort == action:
             if succeeded:
                 self.freeMoneys.append(target)
-            else:
-                if target in self.freeMoneys:
-                    self.freeMoneys.remove(target)
-        
+    
+    def notify_block(self, blocker, character, actor, action, succeeded):
+        if Action.extort == action and succeeded:
+            if blocker in self.freeMoneys:
+                self.freeMoneys.remove(blocker)
+    
     def take_action(self):
+        self.turn += 1
         active = [x.identifier for x in self.states if len(x.flipped) < 2]
         if len(active) != 0:
             return self.take_group_action()
@@ -41,12 +47,12 @@ class SilvioBot(Bot):
         else:
             target = self.pick_richest(tg)
 
+        active = [x.identifier for x in self.states if len(x.flipped) < 2]
         coins = self.states[self.identifier].coins
-        if len(self.freeMoneys) > 0:
-            if self.freeMoneys[0].coins > 0:
-                return TargetedAction(Action.extort, self.freeMoneys[0])
         if  coins >= 7:
             return TargetedAction(Action.coup, target)
+        if len(self.freeMoneys) > 0 and self.freeMoneys[0] in active and self.states[self.freeMoneys[0]].coins > 1:
+            return TargetedAction(Action.extort, self.freeMoneys[0])
         if Character.duke in self.hidden:
             return Action.tax
         if Character.ambassador in self.hidden:
