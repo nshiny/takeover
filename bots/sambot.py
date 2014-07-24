@@ -17,12 +17,16 @@ class SamBot(Bot):
 
         coins = self.states[self.identifier].coins
 
-        if coins >= 7:
+        if coins >= 7: #coup if we have 7 coins
             return TargetedAction(Action.coup, target)
-        elif Character.contessa not in self.hidden:
-            return Action.exchange
-        elif Character.assassin in self.hidden and coins >= 3:
+        elif Character.assassin in self.hidden and coins >= 3: #if we have the assasin and we have between 3 and 6 coin, assassinate
             return TargetedAction(Action.assassinate, target)
+        elif Character.duke in self.hidden: # if we have the duke, tax
+            return Action.tax
+        elif Character.captain in self.hidden: # if we have the captain, extort
+            return TargetedAction(Action.extort, target)
+        elif Character.contessa not in self.hidden: # if we don't have a contessa, exchange until we do
+            return Action.exchange
         else:
             return Action.income
 

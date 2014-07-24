@@ -24,16 +24,17 @@ class SteffBot(Bot):
         if coins >= 7: # if we have at least 7 coins, always coup
             return TargetedAction(Action.coup, target)
 
-        if self.steffTurn <= 3: # for the first 3 turns, always tax
+        elif self.steffTurn <= 3: # for the first 3 turns, always tax
             return Action.tax
 
-        if Character.duke in self.hidden: # if we have the duke, tax
+        elif Character.duke in self.hidden: # if we have the duke, tax
             return Action.tax
 
-        if len(self.hidden) > 1: # if we have only one card left, exchange
+        elif len(self.hidden) > 1: # if we have only one card left, exchange
             return Action.exchange
 
-        return TargetedAction(Action.extort, target) # else: extort
+        else:
+            return TargetedAction(Action.extort, target) # else: extort
 
     def challenge(self, actor, action, character, target):
         if action == Action.foreign_aid:
@@ -46,7 +47,7 @@ class SteffBot(Bot):
         if len(self.hidden) > 0 and action.blockable(self.hidden[0]):
             return self.hidden[0]
 
-        if len(self.hidden) > 1 and action.blockable(self.hidden[1]):
+        elif len(self.hidden) > 1 and action.blockable(self.hidden[1]):
             return self.hidden[1]
 
         return None
