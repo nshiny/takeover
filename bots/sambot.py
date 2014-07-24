@@ -2,38 +2,29 @@ from interface import *
 
 import random
 
-
-class SteffBot(Bot):
+class SamBot(Bot):
     def __init__(self, identifier):
         self.identifier = identifier
-        self.steffTurn = 0
-    
+
     def update_state(self, states, hidden):
         self.states = states
         self.hidden = hidden
         
     def take_action(self):
-        self.steffTurn += 1 # every turn, increment the turn number
-
         active = [x.identifier for x in self.states if len(x.flipped) < 2]
         active.remove(self.identifier)
         target = random.choice(active)
 
         coins = self.states[self.identifier].coins
 
-        if coins >= 7: # if we have at least 7 coins, always coup
+        if coins >= 7:
             return TargetedAction(Action.coup, target)
-
-        if self.steffTurn <= 3: # for the first 3 turns, always tax
-            return Action.tax
-
-        if Character.duke in self.hidden: # if we have the duke, tax
-            return Action.tax
-
-        if len(self.hidden) > 1: # if we have only one card left, exchange
+        elif Character.contessa not in self.hidden:
             return Action.exchange
-
-        return TargetedAction(Action.extort, target) # else: extort
+        elif Character.assassin in self.hidden and coins >= 3:
+            return TargetedAction(Action.assassinate, target)
+        else:
+            return Action.income
 
     def challenge(self, actor, action, character, target):
         if action == Action.foreign_aid:
@@ -62,15 +53,15 @@ class SteffBot(Bot):
     def _prioritize(self, characters):
         prioritized = []
         prioritized.extend(
-            [Character.duke] * characters.count(Character.duke))
-        prioritized.extend(
-            [Character.captain] * characters.count(Character.captain))
-        prioritized.extend(
-            [Character.ambassador] * characters.count(Character.ambassador))
-        prioritized.extend(
             [Character.contessa] * characters.count(Character.contessa))
         prioritized.extend(
             [Character.assassin] * characters.count(Character.assassin))
+        prioritized.extend(
+            [Character.duke] * characters.count(Character.duke))
+        prioritized.extend(
+            [Character.ambassador] * characters.count(Character.ambassador))
+        prioritized.extend(
+            [Character.captain] * characters.count(Character.captain))
         
         return prioritized  
 
@@ -86,4 +77,4 @@ class SteffBot(Bot):
         return self.flip()
 
 def make_bot(identifier):
-    return SteffBot(identifier)
+    return SamBot(identifier)
