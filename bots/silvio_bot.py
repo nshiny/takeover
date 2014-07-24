@@ -23,7 +23,7 @@ class SilvioBot(Bot):
         if Action.exchange == action:
             self.aCards = []
         if Action.extort == action:
-            if succeeded:
+            if succeeded and target != self.identifier:
                 self.freeMoneys.append(target)
     
     def notify_block(self, blocker, character, actor, action, succeeded):
@@ -34,39 +34,36 @@ class SilvioBot(Bot):
     def take_action(self):
         self.turn += 1
         active = [x.identifier for x in self.states if len(x.flipped) < 2]
+        # TODO 1v1 ME BRO
         if len(active) != 0:
             return self.take_group_action()
 
     def take_group_action(self):
-        tg = [x for x in self.states if len(x.flipped) == 0]
-        if self in tg: tg.remove(self)
-        og = [x for x in self.states if len(x.flipped) == 1]
-        if self in og: og.remove(self)
-        if len(og) > 0:
-            target = self.pick_richest(og)
-        else:
+        tg = [x for x in self.states if len(x.flipped) == 0 and x.identifier != self.identifier]
+        og = [x for x in self.states if len(x.flipped) == 1 and x.identifier != self.identifier]
+        if len(tg) > 0:
             target = self.pick_richest(tg)
+        else:
+            target = self.pick_richest(og)
 
         active = [x.identifier for x in self.states if len(x.flipped) < 2]
         coins = self.states[self.identifier].coins
         if  coins >= 7:
             return TargetedAction(Action.coup, target)
-        if len(self.freeMoneys) > 0 and self.freeMoneys[0] in active and self.states[self.freeMoneys[0]].coins > 1:
-            return TargetedAction(Action.extort, self.freeMoneys[0])
         if Character.duke in self.hidden:
             return Action.tax
         if Character.ambassador in self.hidden:
-            #love dat tess
-            if Character.contessa not in self.hidden:
-                return Action.exchange
+            return Action.exchange
         if len(self.hidden) == 2 and self.hidden[0] == self.hidden[1]:
             if self.hidden[0] in [Character.duke, Character.assassin]:
                 return Action.exchange
-        if Character.captain in self.hidden:
-            return TargetedAction(Action.extort, target)
         if Character.assassin in self.hidden and coins >= 3:
                 if self.count_known(Character.contessa) > 0:
                     return TargetedAction(Action.assassinate, target)
+        if Character.captain in self.hidden:
+            if len(self.freeMoneys) > 0 and self.freeMoneys[0] in active and self.states[self.freeMoneys[0]].coins > 1:
+                return TargetedAction(Action.extort, self.freeMoneys[0])
+            return TargetedAction(Action.extort, target)
         if self.count_known(Character.duke) == 3:
             return Action.foreign_aid
         return Action.income
@@ -115,7 +112,7 @@ class SilvioBot(Bot):
         if len(self.hidden) == 2 and self.hidden[0] == self.hidden[1]:
             groi = self.hidden[0]
 
-        pc = [Character.contessa, Character.duke, Character.ambassador, Character.captain, Character.assassin]
+        pc = [Character.duke, Character.captain, Character.ambassador, Character.assassin, Character.contessa]
 
         for char in pc:
             if groi != char and char in characters:
