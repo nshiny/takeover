@@ -244,7 +244,8 @@ class Match:
         for i, x in enumerate(self._bots):
             wins = sum(1 for w in winners if w.identifier == i)
             name = x.__module__ + "@" + str(i)
-            log.summary(name, str(float(wins) / float(count)))
+            log.summary(name, float(wins) / float(count))
+        log.summary("draws", float(count - len(winners)) / float(count))
 
     def play(self):
         self.deck = Deck()
