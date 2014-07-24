@@ -34,8 +34,13 @@ class SamBot(Bot):
         if action == Action.foreign_aid:
             if Character.duke in self.hidden:
                	return True
-        else:
-            return False
+        if action == Action.extort:
+            if Character.captain in self.hidden:
+                return True
+        if action == Action.tax:
+            if Character.duke in self.hidden:
+                return True
+        return False
         
     def block_action(self, actor, action, character, target):
         if len(self.hidden) > 0 and action.blockable(self.hidden[0]):
@@ -63,9 +68,10 @@ class SamBot(Bot):
         prioritized.extend(
             [Character.duke] * characters.count(Character.duke))
         prioritized.extend(
-            [Character.ambassador] * characters.count(Character.ambassador))
-        prioritized.extend(
             [Character.captain] * characters.count(Character.captain))
+        prioritized.extend(
+            [Character.ambassador] * characters.count(Character.ambassador))
+
         
         return prioritized  
 

@@ -7,7 +7,10 @@ class SteffBot(Bot):
     def __init__(self, identifier):
         self.identifier = identifier
         self.steffTurn = 0
-    
+        
+    def start(self):
+        self.steffTurn = 0
+
     def update_state(self, states, hidden):
         self.states = states
         self.hidden = hidden
@@ -24,7 +27,7 @@ class SteffBot(Bot):
         if coins >= 7: # if we have at least 7 coins, always coup
             return TargetedAction(Action.coup, target)
 
-        elif self.steffTurn <= 3: # for the first 3 turns, always tax
+        elif self.steffTurn <= 2: # for the first 2 turns, always tax (I don't understand why this is only 2 turns when it looks to me like I'm indicating 3)
             return Action.tax
 
         elif Character.duke in self.hidden: # if we have the duke, tax
