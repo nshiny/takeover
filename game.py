@@ -357,11 +357,12 @@ class Match:
             players.extend(self.clockwise_players(actor))
             
         for potential in players:
-            character = potential.block_action(
+            result = potential.block_action(
                 self.identifier(actor), action,
                 action.required_character(), self.identifier(target))
-            if potential.active and character is not None:
+            if potential.active and result is not None:
                 blocker = potential
+                character = result
 
         if blocker is not None:
             log.event(blocker, "blocks", actor, "with", (character))
@@ -419,7 +420,7 @@ class Match:
             character = loser.flip()
 
         self.update_state()
-        for player in self.active_players():
+        for player in self.players:
             player.notify_flip(self.identifier(loser), character)
     
     def update_state(self):
