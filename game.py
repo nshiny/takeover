@@ -14,8 +14,7 @@ class Log:
         self.verbose = True
     
     def warn(self, *args):
-        if self.verbose:
-            print("Warning: " + self._format(*args))
+        print("Warning: " + self._format(*args))
 
     def event(self, *args):
         if self.verbose:
@@ -40,7 +39,6 @@ def _try(function, *args, **kwargs):
     try:
         return function(*args, **kwargs)
     except Exception as e:
-        log.warn(self, e)
         log.warn(traceback.format_exc())
 
 
