@@ -332,7 +332,8 @@ class Match:
 
         self.update_state()
         for player in self.active_players():
-            player.notify_action(actor, action, target, succeeded)
+            player.notify_action(self.identifier(actor), action,
+                                 self.identifier(target), succeeded)
             
     def block(self, actor, action, target):
         sustained = False
@@ -357,9 +358,9 @@ class Match:
             if not self.challenge(blocker, Action.block, character, actor):
                 sustained = True
 
-        for player in self.players:
-            player.notify_block(
-                blocker, character, actor, action, sustained)
+            for player in self.players:
+                player.notify_block(self.identifier(blocker), character,
+                                    self.identifier(actor), action, sustained)
         
         return sustained
                 
