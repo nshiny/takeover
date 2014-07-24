@@ -40,6 +40,10 @@ class SamBot(Bot):
         if action == Action.tax:
             if Character.duke in self.hidden:
                 return True
+        if action == Action.block and character == Character.contessa and Character.contessa in self.hidden:
+            return True
+        if action == Action.block and character == Character.contessa and len(self.hidden) > 1:
+            return True
         return False
         
     def block_action(self, actor, action, character, target):
@@ -48,6 +52,9 @@ class SamBot(Bot):
 
         if len(self.hidden) > 1 and action.blockable(self.hidden[1]):
             return self.hidden[1]
+            
+        if action == Action.assassinate and len(self.hidden) > 1:
+            return Character.contessa    
 
         return None
 
