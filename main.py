@@ -17,9 +17,26 @@ def get_bots(path):
     return [__import__(x) for x in names]
 
 
+def select_bots(required, bots):
+    named = {x.__name__ : x for x in bots}
+    required = [named[x] for x in required]
+    
+    if len(required) >= 6:
+        return random.sample(required, 6)
+
+    needed = 6 - len(required)
+    
+    if len(bots) - len(set(required)) < needed:
+        return required + [random.choice(bots) for x in range(needed)]
+    
+    return required + random.sample(set(bots) - set(required), needed)
+
+
 def main(argv):
+    required = ["turtle_bot"]
     bots = get_bots("bots")
-    match = Match([random.choice(bots) for x in range(6)])
+    
+    match = Match(select_bots(required, bots))
     match.repeat(1)
 
             
