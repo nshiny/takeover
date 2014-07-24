@@ -34,9 +34,8 @@ class SamBot(Bot):
         if action == Action.foreign_aid:
             if Character.duke in self.hidden:
                	return True
-        if action == Action.extort:
-            if Character.captain in self.hidden:
-                return True
+        if action == Action.extort and Character.captain in self.hidden:
+            return True
         if action == Action.tax:
             if Character.duke in self.hidden:
                 return True
@@ -58,14 +57,6 @@ class SamBot(Bot):
 
         return None
 
-    def flip(self):
-        if len(self.hidden) > 1:
-            if Character.contessa in self.hidden:
-                if self.hidden[0] == Character.contessa:
-                    return self.hidden[1]
-
-        return self.hidden[0]
-
     def _prioritize(self, characters):
         prioritized = []
         prioritized.extend(
@@ -78,7 +69,6 @@ class SamBot(Bot):
             [Character.captain] * characters.count(Character.captain))
         prioritized.extend(
             [Character.ambassador] * characters.count(Character.ambassador))
-
         
         return prioritized  
 
@@ -86,6 +76,17 @@ class SamBot(Bot):
         prioritized = self._prioritize(list(self.hidden) + list(drawn))
         return prioritized[-2:]
 
+    def flip(self):
+        if Character.ambassador in self.hidden:
+            return Character.ambassador
+        if Character.captain in self.hidden:
+            return Character.captain
+        if Character.duke in self.hidden:
+            return Character.duke
+        if Character.assassin in self.hidden:
+            return Character.assassin
+        if Character.contessa in self.hidden:
+            return Character.contessa
 
     def reveal(self, challenger, action, character, taret):
         if character in self.hidden:
