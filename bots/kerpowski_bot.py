@@ -1,5 +1,6 @@
 from interface import *
 import random
+import copy
 
 class Kerpowski(Bot):
 
@@ -7,13 +8,20 @@ class Kerpowski(Bot):
         self.identifier = identifier
         self._characterValueMap = {
             Character.duke:10,
-            Character.assassin:9,
-            Character.contessa:8,
-            Character.captain:7,
+            Character.captain:8,
+            Character.contessa:2,
+            Character.assassin:4,
             Character.ambassador:1}
+        
         self._contessaMap = None
         self._numExchanges = 0
-
+        self._gameID = 0
+        self._turn = 0
+        
+    def start(self):
+        self._gameID += 1
+        self._turn = 1
+        
     def update_state(self, states, hidden):
         self.states = states
         self.hidden = list(hidden)
@@ -22,6 +30,8 @@ class Kerpowski(Bot):
 
                 
     def take_action(self):
+        self._turn += 1
+        
         active = [x for x in self.states if len(x.flipped) < 2 and x.identifier != self.identifier]
         
         # primarily attack players with two cards, secondarily attack the player with the most coins 
@@ -33,7 +43,8 @@ class Kerpowski(Bot):
         for x in self.states:
             allKnown += x.flipped
         allKnown += self.hidden
-        
+
+            
         if self.states[self.identifier].coins >= 7:
             return TargetedAction(Action.coup, target)
         elif (Character.assassin in self.hidden and self.states[self.identifier].coins >= 3 and 
@@ -42,8 +53,8 @@ class Kerpowski(Bot):
         elif Character.captain in self.hidden and 6 == (allKnown.count(Character.captain) + allKnown.count(Character.ambassador)):
             # we have an unblockable captain!
             return TargetedAction(Action.extort, target)
-        elif Character.duke not in self.hidden and allKnown.count(Character.duke) < 3:
-            if (Character.ambassador in self.hidden or random.uniform(0, 1) < 0.05) and self._numExchanges < 2:
+        elif (Character.duke not in self.hidden) and self._numExchanges < 1 and len(self.hidden) > 1:
+            if Character.ambassador in self.hidden or random.uniform(0, 1) < 0.25:
                 self._numExchanges += 1
                 return Action.exchange
             elif random.uniform(0, 1) < 0.05:
@@ -98,17 +109,34 @@ class Kerpowski(Bot):
         return False
     
     def flip(self):            
-        self.hidden.sort(key=lambda x: self._characterValueMap[x], reverse=True) 
+        self._rankCards(self.hidden)
         return self.hidden[-1]
     
     def exchange(self, drawn):
         totalCards = self.hidden + list(drawn)
-        totalCards.sort(key=lambda x: self._characterValueMap[x], reverse=True)
+        self._rankCards(totalCards)
+        
         if totalCards[0] == totalCards[1]:
             totalCards[1], totalCards[2] = totalCards[2], totalCards[1]
-            
+    
         return totalCards[-2:]
-            
+
+    def _rankCards(self, cardList):
+        valueMap = copy.deepcopy(self._characterValueMap)
+
+        allKnown = []
+        for x in self.states:
+            allKnown += x.flipped
+        allKnown += self.hidden
+
+        if len([x for x in self.states if len(x.flipped) < 2 and x.identifier != self.identifier]) < 4:
+            if allKnown.count(Character.contessa) == 3:
+                valueMap[Character.assassin] = 11
+            if (allKnown.count(Character.captain) + allKnown.count(Character.ambassador)) == 6:
+                valueMap[Character.captain] = 11
+        
+        cardList.sort(key=lambda x: valueMap[x], reverse=True)
+        return cardList
             
             
 
