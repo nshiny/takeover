@@ -153,6 +153,10 @@ class Player:
     def notify_action(self, actor, action, target, succeeded):
         self._bot.notify_action(actor, action, target, succeeded)
 
+    def notify_block(self, blocker, character, actor, action, succeeded):
+        return self._bot.notify_block(
+            blocker, character, actor, action, succeeded)
+
     def notify_challenge(self, challenger, actor, action,
                          character, target, sustained):
         self._bot.notify_challenge(
@@ -352,6 +356,10 @@ class Match:
             if not self.challenge(blocker, Action.block, character, actor):
                 sustained = True
 
+        for player in self.players:
+            player.notify_block(
+                blocker, character, actor, action, sustained)
+        
         return sustained
                 
     def challenge(self, actor, action, character, target):

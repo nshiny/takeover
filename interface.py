@@ -102,6 +102,12 @@ class Bot:
         and true otherwise."""
         pass
 
+    def notify_block(self, blocker, character, actor, action, succeeded):
+        """Invoked for each bot after a block resolves. Succeeded is
+        true if the block was not challenged or if any challenge
+        against it was not sustained, and false otherwise."""
+        pass
+
     def notify_challenge(self, challenger, actor, action,
                          character, target, revealed):
         """Invoked for each bot after a challenge has been decided.

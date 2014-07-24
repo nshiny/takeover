@@ -66,7 +66,7 @@ class Kerpowski(Bot):
         pass    
             
     # TODO: not used currently, may be implemented later
-    def notify_block(self, actor, action, blocker, succeeded):
+    def notify_block(self, blocker, character, actor, action, succeeded):
         if action == Action.assassinate:
             self._contessaMap[blocker] = succeeded
 
