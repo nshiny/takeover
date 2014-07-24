@@ -36,6 +36,14 @@ class Log:
 log = Log()
 
 
+def _try(function, *args, **kwargs):
+    try:
+        return function(*args, **kwargs)
+    except Exception as e:
+        log.warn(self, e)
+        log.warn(traceback.format_exc())
+
+
 class Deck:
     """Represents a deck of cards with automatically managed shuffling."""
     
@@ -84,7 +92,7 @@ class Player:
         self._bot.start()
 
     def take_action(self, valid_targets):
-        result = self._try(self._bot.take_action)
+        result = _try(self._bot.take_action)
 
         if isinstance(result, Action):
             result = TargetedAction(result, None)
@@ -119,7 +127,7 @@ class Player:
         return result
 
     def block_action(self, actor, action, character, target):
-        result = self._try(
+        result = _try(
             self._bot.block_action, actor, action, character, target)
         
         if result is not None and not isinstance(result, Character):
@@ -133,7 +141,7 @@ class Player:
         return result
 
     def challenge(self, actor, action, character, target):
-        result = self._try(
+        result = _try(
             self._bot.challenge, actor, action, character, target)
         
         if not isinstance(result, bool):
@@ -143,25 +151,25 @@ class Player:
         return result
 
     def notify_action(self, actor, action, target, succeeded):
-        self._try(self._bot.notify_action, actor, action, target, succeeded)
+        _try(self._bot.notify_action, actor, action, target, succeeded)
 
     def notify_block(self, blocker, character, actor, action, succeeded):
-        self._try(self._bot.notify_block, blocker,
+        _try(self._bot.notify_block, blocker,
                   character, actor, action, succeeded)
 
     def notify_challenge(self, challenger, actor, action,
                          character, target, sustained):
-        self._try(self._bot.notify_challenge, challenger, actor,
+        _try(self._bot.notify_challenge, challenger, actor,
                   action, character, target, sustained)
 
     def notify_flip(self, player, flipped):
-        self._try(self._bot.notify_flip, player, flipped)
+        _try(self._bot.notify_flip, player, flipped)
 
     def update_state(self, states):
-        self._try(self._bot.update_state, states[:], tuple(self.hidden))
+        _try(self._bot.update_state, states[:], tuple(self.hidden))
     
     def flip(self):
-        result = self._try(self._bot.flip)
+        result = _try(self._bot.flip)
         
         if not isinstance(result, Character) or result not in self.hidden:
             log.warn(self, "flip returned an invalid character")
@@ -175,7 +183,7 @@ class Player:
             log.event(self, "loses")
 
     def exchange(self, drawn):
-        result = self._try(self._bot.exchange, tuple(drawn))
+        result = _try(self._bot.exchange, tuple(drawn))
 
         if not isinstance(result, collections.Sequence):
             log.warn(self, "exchange did not return a sequence")
@@ -205,7 +213,7 @@ class Player:
         return result
 
     def reveal(self, challenger, action, character, target):
-        result = self._try(
+        result = _try(
             self._bot.reveal, challenger, action, character, target)
 
         if not isinstance(result, Character) or result not in self.hidden:
@@ -213,13 +221,6 @@ class Player:
             result = self.hidden[0]
 
         return result
-
-    def _try(self, function, *args, **kwargs):
-        try:
-            return function(*args, **kwargs)
-        except Exception as e:
-            log.warn(self, e)
-            log.warn(traceback.format_exc())
 
     def _default_action(self):
         # Default to slow suicide!
@@ -245,6 +246,9 @@ class Match:
             result = self.play()
             if result is not None:
                 winners.append(result)
+
+        for bot in self._bots:
+            _try(bot.notify_end)
 
         log.summary("Completed in", str(int(time.clock() - started)), "seconds")
         log.summary("")

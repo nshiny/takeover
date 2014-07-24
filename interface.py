@@ -118,6 +118,10 @@ class Bot:
         """Invoked for each bot after a player loses influence."""
         pass
 
+    def notify_end(self):
+        """Invoked for each bot after a match is finished; for debugging."""
+        pass
+
     def update_state(self, states, hidden):
         """Invoked for each bot whenever the game state changes.
         States is an iterable of the PlayerState for each player.
