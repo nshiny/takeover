@@ -1,46 +1,77 @@
+from concurrent.futures import ProcessPoolExecutor
+from collections import Counter
+
 import os
 import random
 import sys
+import time
 
 sys.path.append("bots")
 from game import Match, log
 
 
-def get_bots(path):
-    names = [x[:-3] for x in os.listdir(path) if x[-3:] == ".py"]
-    names.remove("__init__")
+def worker(bots, iterations):
+    sys.path.append("bots")
+    match = Match([__import__(x) for x in bots])
+    return match.repeat(iterations)
 
-    return [__import__(x) for x in names]
 
+def parallel(bots, threads, matches, iterations):
+    final = Counter()
+ 
+    if matches == 1:
+        print("one")
+        final.update(worker(bots, iterations))
+    else:
+        futures = []
+        with ProcessPoolExecutor(max_workers=threads) as executor:             
+            for x in range(matches):
+                futures.append(executor.submit(
+                    worker, bots, iterations))
 
-def select_bots(num_players, required, excluded, bots):
-    named = {x.__name__ : x for x in bots}
-    required = [named[x] for x in required]
-    bots = [x for x in bots if x.__name__ not in excluded]
+        for result in futures:
+            final.update(result.result())
+        
+    print("")
+    for key in sorted(final):
+        print(key, "%.4f" % (final[key] / (matches * iterations)),
+              "(" + str(final[key]) + ")")
+        
+
+def select_bots(num_players, required, excluded, names):
+    available = [x for x in names if x not in excluded]
     
     if len(required) >= num_players:
         return random.sample(required, num_players)
 
     needed = num_players - len(required)
     
-    if len(bots) - len(set(required)) < needed:
-        return required + [random.choice(bots) for x in range(needed)]
+    if len(names) - len(set(required)) < needed:
+        return required + [random.choice(names) for x in range(needed)]
     
-    return required + random.sample(set(bots) - set(required), needed)
+    return required + random.sample(set(names) - set(required), needed)
 
 
 def main(argv):
-    iterations = 1
-    verbose = True
-    required = ["turtle_bot"]
+    threads = 6
+    matches = 6
+    iterations = 10000
+    required = []
     excluded = ["duke_or_die_bot"]
     num_players = 6
+
+    # Note that there's no output when running more than one match
+    log.verbose = False
     
-    log.verbose = verbose
-    bots = get_bots("bots")
+    names = [x[:-3] for x in os.listdir("bots") if x[-3:] == ".py"]
+    names.remove("__init__")
     
-    match = Match(select_bots(num_players, required, excluded, bots))
-    match.repeat(iterations)
+    bots = select_bots(num_players, required, excluded, names)
+    started = time.clock()
+    parallel(bots, threads, matches, iterations)
+
+    print("")
+    print("Completed in", str(int(time.clock() - started)), "seconds")
 
             
 if __name__ == "__main__":
