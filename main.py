@@ -33,7 +33,7 @@ def main(argv):
     iterations = 1
     verbose = True
     required = ["turtle_bot"]
-    excluded = []
+    excluded = ["duke_or_die_bot"]
     num_players = 6
     
     log.verbose = verbose
