@@ -24,9 +24,7 @@ class DukeOrDie(Bot):
 
         if coins >= 7: # coup if we have 7 coins
             return TargetedAction(Action.coup, target)
-        elif self.dukeTurn % 2 == 0:
-            return Action.tax
-        elif self.dukeTurn % 2 != 0 and Character.duke not in self.hidden:
+        elif self.dukeTurn % 2 == 0 and Character.duke not in self.hidden:
             return Action.exchange
         else:
             return Action.tax

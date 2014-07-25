@@ -43,11 +43,6 @@ class SamBot(Bot):
         if action == Action.foreign_aid:
             if Character.duke in self.hidden:
                	return True
-        if action == Action.extort and Character.captain in self.hidden:
-            return True
-        if action == Action.tax:
-            if Character.duke in self.hidden:
-                return True
         if action == Action.block and character == Character.contessa and Character.contessa in self.hidden:
             return True
         if action == Action.block and character == Character.contessa and len(self.hidden) > 1:
