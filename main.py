@@ -13,15 +13,15 @@ def get_bots(path):
     return [__import__(x) for x in names]
 
 
-def select_bots(numPlayers, required, excluded, bots):
+def select_bots(num_players, required, excluded, bots):
     named = {x.__name__ : x for x in bots}
     required = [named[x] for x in required]
     bots = [x for x in bots if x.__name__ not in excluded]
     
-    if len(required) >= numPlayers:
+    if len(required) >= num_players:
         return random.sample(required, numPlayers)
 
-    needed = numPlayers - len(required)
+    needed = num_players - len(required)
     
     if len(bots) - len(set(required)) < needed:
         return required + [random.choice(bots) for x in range(needed)]
@@ -34,12 +34,12 @@ def main(argv):
     verbose = True
     required = ["turtle_bot"]
     excluded = []
-    numPlayers = 6
+    num_players = 6
     
     log.verbose = verbose
     bots = get_bots("bots")
     
-    match = Match(select_bots(numPlayers, required, excluded, bots))
+    match = Match(select_bots(num_players, required, excluded, bots))
     match.repeat(iterations)
 
             
