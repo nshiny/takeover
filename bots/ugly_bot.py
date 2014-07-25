@@ -31,26 +31,48 @@ class Tactics:
         self._challenges = challenges
         self._cards = cards
         
-        self._current_choice = None
-        self._current_outcome = None
+        self._current_action = {}
+        self._current_block = {}
+        self._current_response = {}
         
-        self._choices = []
-        self._choices.append(self.easy_assassinate)
-        self._choices.append(self.early_assassinate)
-        self._choices.append(self.takeover)
-        self._choices.append(self.unblockable_captain)
-        self._choices.append(self.claim_duke)
-        self._choices.append(self.easy_foreign_aid)
-        self._choices.append(self.income)
-        
-        self._outcomes = {x.__name__ : Counter() for x in self._choices}
+        self._actions = []
+        self._actions.append(self.obvious_assassinate)
+        self._actions.append(self.takeover)
+        self._actions.append(self.early_assassinate)
+        self._actions.append(self.unblockable_captain)
+        self._actions.append(self.claim_duke)
+        self._actions.append(self.obvious_foreign_aid)
+        self._actions.append(self.income)
 
-    def decide(self):
-        self._current_outcome = {"attempted" : 1}
-        for choice in self._choices:
-            result = choice()
+        self._blocks = []
+        self._blocks.append(self.obvious_block)
+        self._blocks.append(self.final_contessa)
+        
+        self._responses = []
+        self._responses.append(self.obvious_response)
+        self._responses.append(self.repeat_response)
+        
+        self._outcomes = {x.__name__ : Counter() for x in
+                          self._actions + self._blocks + self._responses}
+
+    def decide_action(self):
+        self._current_action = {"attempted" : 1}
+        return self._decide(self._actions, self._current_action)
+
+    def decide_block(self, *args):
+        self._current_block = {"attempted" : 1}
+        return self._decide(self._blocks, self._current_block, *args)
+
+    def decide_response(self, *args):
+        self._current_response = {"attempted" : 1}
+        return bool(self._decide(
+            self._responses, self._current_response, *args))
+    
+    def _decide(self, choices, current, *args):
+        for choice in choices:
+            result = choice(*args)
             if result is not None:
-                self._current_name = choice.__name__
+                current["name"] = choice.__name__
                 return result
 
     def _claim_character(self, character, target):
@@ -74,7 +96,7 @@ class Tactics:
 
         return challenged < 0.01
 
-    def easy_assassinate(self):
+    def obvious_assassinate(self):
         if self._state.coins() >= 3:
             for target in self._dangers.prioritized(
                 self._cards.without(Character.contessa)):
@@ -82,12 +104,14 @@ class Tactics:
                     return TargetedAction(Action.assassinate, target)
 
     def early_assassinate(self):
+        threats = self._dangers.threats()
         if self._state.coins() >= 3:
             for target in self._dangers.prioritized(
-                [x for x in self._state.other_players()
+                [x for x in self._cards.unclaimed(Character.contessa)
                  if self._state.influence(x) > 1]):
-                if Character.assassin in self._state.hidden:
-                    return TargetedAction(Action.assassinate, target)
+                if len(threats) > 0 and target not in threats:
+                    if Character.assassin in self._state.hidden:
+                        return TargetedAction(Action.assassinate, target)
 
     def takeover(self):
         if self._state.coins() >= 7:
@@ -95,45 +119,93 @@ class Tactics:
             return TargetedAction(Action.coup, target)
 
     def unblockable_captain(self):
-        captain_target = self._dangers.target(
+        wealth = 2
+        if len(self._state.other_players()) < 2:
+            wealth = 1
+        for target in self._dangers.prioritized(
             [x for x in self._state.other_players()
              if self._cards.absent(x, Character.captain) and
              self._cards.absent(x, Character.ambassador) and
-             self._state.coins(x) >= 2])
-        if captain_target is not None:
-            if self._claim_character(Character.captain, captain_target):              
-                return TargetedAction(Action.extort, captain_target)
+             self._state.coins(x) >= wealth]):
+            if self._claim_character(Character.captain, target):              
+                return TargetedAction(Action.extort, target)       
 
     def claim_duke(self):
         if self._claim_character(Character.duke, None):
             return Action.tax
 
-    def easy_foreign_aid(self):
+    def obvious_foreign_aid(self):
+        without = len(self._cards.without(Character.duke))
+        if without >= len(self._state.other_players()):
+            return Action.foreign_aid
+        
         if self._cards.remaining(Character.duke) == 0:
             return Action.foreign_aid
         
     def income(self):
         return Action.income
 
+    def obvious_block(self, actor, action, character, target):
+        blockers = [x for x in self._state.hidden if action.blockable(x)]
+        if len(blockers) > 0:
+            return blockers[0]
+
+    def final_contessa(self, actor, action, character, target):
+        if action == Action.assassinate and self._state.influence() == 1:
+            return Character.contessa
+
+    def obvious_response(self, actor, action, character, target):
+        if self._cards.remaining(character) == 0:
+            return True
+
+        if self._cards.absent(actor, character):
+            return True
+
+    def repeat_response(self, actor, action, character, target):
+        # It's okay to fall for the long Kwan.
+        if self._cards.absent(actor, character):
+            return True
+
     def notify_action(self, actor, action, target, succeeded):
         if actor == self._state.identifier:
-            self._current_outcome["succeeded"] = int(succeeded)
-            self._outcomes[self._current_name].update(self._current_outcome)
+            self._current_action["succeeded"] = int(succeeded)
+            
+            name = self._current_action["name"]
+            del self._current_action["name"]
+            self._outcomes[name].update(self._current_action)
 
     def notify_block(self, blocker, character, actor, action, succeeded):
         if actor == self._state.identifier:
-            self._current_outcome["blocked"] = 1
-            self._current_outcome["denied"] = int(succeeded)
+            self._current_action["blocked"] = 1
+            self._current_action["denied"] = int(succeeded)
+
+        if blocker == self._state.identifier:
+            self._current_block["succeeded"] = int(succeeded)
+
+            name = self._current_block["name"]
+            del self._current_block["name"]
+            self._outcomes[name].update(self._current_block)
         
     def notify_challenge(self, challenger, actor, action,
                          character, target, revealed):
         if actor == self._state.identifier:
-            self._current_outcome["challenged"] = 1
-            self._current_outcome["sustained"] = int(character != revealed)
+            if action == Action.block:
+                self._current_block["challenged"] = 1
+                self._current_block["sustained"] = int(character != revealed)
+            else:
+                self._current_action["challenged"] = 1
+                self._current_action["sustained"] = int(character != revealed)
 
         if challenger == self._state.identifier:
-            self._current_outcome["responded"] = 1
-            self._current_outcome["smacked"] = int(character != revealed)
+            self._current_action["responded"] = 1
+            self._current_action["smacked"] = int(character != revealed)
+
+            self._current_response["succeeded"] = int(character != revealed)
+            
+            name = self._current_response["name"]
+            del self._current_response["name"]
+            self._outcomes[name].update(self._current_response)
+
 
     def notify_end(self):
         if not DIAGNOSTICS:
@@ -156,7 +228,7 @@ class UglyBot(Bot):
         self.state = StateTracker(identifier)
         self.listeners.add(self.state)
         
-        self.cards = CardTracker()
+        self.cards = CardTracker(self.state)
         self.listeners.add(self.cards)
 
         self.challenges = ChallengeTracker()
@@ -175,31 +247,15 @@ class UglyBot(Bot):
 
     @invoke_listeners
     def take_action(self):     
-        return self.tactics.decide()
+        return self.tactics.decide_action()
 
     @invoke_listeners
     def block_action(self, actor, action, character, target):
-        blockers = [x for x in self.state.hidden if action.blockable(x)]
-        if len(blockers) > 0:
-            return blockers[0]
-
-        if action == Action.assassinate and self.state.influence() == 1:
-            return Character.contessa
-
-        return None
+        return self.tactics.decide_block(actor, action, character, target)
 
     @invoke_listeners
-    def challenge(self, actor, action, character, target):        
-        remaining = self.cards.remaining(character)
-        
-        if remaining == 0:
-            return True
-
-        # It's okay to fall for the long Kwan.
-        if self.cards.absent(actor, character):
-            return True
-        
-        return False
+    def challenge(self, actor, action, character, target):
+        return self.tactics.decide_response(actor, action, character, target)
 
     @invoke_listeners
     def notify_action(self, actor, action, target, succeeded):
@@ -227,8 +283,8 @@ class UglyBot(Bot):
         pass
 
     def flip(self): 
-        priority = [Character.duke,
-                    Character.captain,
+        priority = [Character.captain,
+                    Character.duke,
                     Character.contessa,
                     Character.assassin,
                     Character.ambassador]
@@ -277,6 +333,16 @@ class ChallengeTracker:
         if target is None or challenger == target:
             self._attempted_challenges[challenger].update([character])
 
+    def notify_end(self):
+        if not DIAGNOSTICS:
+            return
+
+        for x in range(NUM_PLAYERS):
+            for character in Character:
+                print(x, "expect challenge", character,
+                      self.expect_challenge(x, character))
+            print("")
+
 
 class DangerTracker:
     def __init__(self, state):
@@ -286,6 +352,10 @@ class DangerTracker:
         self._attacks = Counter()
         self._survived = Counter()
         self._last = None
+
+    def threats(self):
+        return [x for x in self._state.other_players()
+                if self.killer(x) > 1.2]
 
     def target(self, players=None):
         if players is None:
@@ -305,6 +375,9 @@ class DangerTracker:
             if self._state.influence(player) > 1:
                 score += 6
 
+            if player in self.threats():
+                score += 12
+                
             if self.killer(player) > 1.05:
                 score += 3
             elif self.survival(player) > 1.05:
@@ -323,7 +396,6 @@ class DangerTracker:
         survivors = {x[0] : x[1] / total for x in self._survived.items()}
         mean = sum(x for x in survivors.values()) / len(survivors)
         result = survivors[player] / mean
-        
         return result
 
     def killer(self, player):
@@ -333,9 +405,7 @@ class DangerTracker:
 
         killers = {x[0] : x[1] / total for x in self._killers.items()}
         mean = sum(x for x in killers.values()) / len(killers)
-        return killers[player] / mean 
-        print(result)
-        return result
+        return killers[player] / mean
 
     def notify_action(self, actor, action, target, succeeded):
         if self._state.turn == self._last:
@@ -380,18 +450,26 @@ class DangerTracker:
 
 
 class CardTracker:
-    def __init__(self):
+    def __init__(self, state):
+        self._state = state
         self.start()
         
     def without(self, character):
-        return [k for k, v in self._absent.items() if v == character]
+        return [k for k, v in self._absent.items()
+                if character in v and k in self._state.other_players()]
+
+    def unclaimed(self, character):
+        return [k for k, v in self._claimed.items()
+                if character not in v and k in self._state.other_players()]
 
     def absent(self, player, character):
         return character in self._absent[player]
 
+    def claimed(self, player, character):
+        return character in self._claimed[player]
+
     def remaining(self, character):
-        deck = 15 - (NUM_PLAYERS * 2)
-        return deck - sum(1 for x in self.unavailable() if x == character)
+        return 3 - sum(1 for x in self.unavailable() if x == character)
 
     def unavailable(self):
         return itertools.chain(self._hidden, self.visible())
@@ -416,6 +494,10 @@ class CardTracker:
             blockers = [x[0] for x in blocked_actions.items()
                         if x[1] == action]
             self._absent[target].update(blockers)
+
+        if succeeded and action == Action.foreign_aid:
+            for player in self._state.other_players():
+                self._absent[player].update([Character.duke])
 
     def notify_block(self, blocker, character, actor, action, succeeded):
         self._claimed[blocker].add(character)
