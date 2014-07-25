@@ -266,7 +266,9 @@ class Match:
         self.update_state()
 
         turn_count = 0
-        for player in cycle(self.players):
+        order = self.players[:]
+        random.shuffle(order)
+        for player in cycle(order):
             if player.active:
                 if len(self.active_players()) <= 1:
                     break
