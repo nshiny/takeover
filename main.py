@@ -19,7 +19,7 @@ def select_bots(num_players, required, excluded, bots):
     bots = [x for x in bots if x.__name__ not in excluded]
     
     if len(required) >= num_players:
-        return random.sample(required, numPlayers)
+        return random.sample(required, num_players)
 
     needed = num_players - len(required)
     
