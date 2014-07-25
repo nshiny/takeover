@@ -228,14 +228,53 @@ class Player:
             return TargetedAction(Action.coup, self.identifier)
             
 
+class DataScraper:
+    def __init__(self, keepStats=False):
+        self._trackData = keepStats
+        if keepStats:
+            global pandas
+            global matplotlib
+            import pandas
+            import matplotlib
+            
+            self._playerDataFrame = pandas.DataFrame()
+
+        self._playerDict = {}        
+    
+    def startRound(self, players):
+        if self._trackData:
+            for i, x in enumerate(players):
+                self._playerDict[x.identifier] = {
+                    'player':x.name, 
+                    'card1':x.hidden[0],
+                    'card2':x.hidden[1],
+                    'seat':i}
+
+    def playerEliminated(self, playerID, position):
+        if self._trackData:
+            self._playerDict[playerID]['position'] = position
+            
+    def endRound(self):
+        if self._trackData:
+            for x in self._playerDict.values():
+                self._playerDataFrame = self._playerDataFrame.append(pandas.DataFrame([x]))
+                
+    def endMatch(self):
+        if self._trackData:
+            self._playerDataFrame.to_csv('matchData.csv', index=False)
+        
 class Match:
     """A set of bots in a fixed table order playing a series of rounds."""
     
-    def __init__(self, bot_modules):
+    def __init__(self, bot_modules,keepStats=False):
         self._stalemate_limit = 600
         self._bots = []
+        self._currentRoundPlaces = {}
+        
         for index, module in enumerate(bot_modules):
             self._bots.append(module.make_bot(index))
+        
+        self._dataScraper = DataScraper(keepStats)
 
     def repeat(self, count):
         started = time.clock()
@@ -255,12 +294,15 @@ class Match:
             name = x.__module__ + "@" + str(i)
             log.summary(name, float(wins) / float(count))
         log.summary("draws", float(count - len(winners)) / float(count))
+        
+        self._dataScraper.endMatch()
 
     def play(self):
         self.deck = Deck()
         self.players = [Player(i, x, self.deck.draw(2))
                         for i, x in enumerate(self._bots)]
 
+        self._dataScraper.startRound(self.players)
         for player in self.players:
             player.start()
         self.update_state()
@@ -273,7 +315,7 @@ class Match:
 
                 if turn_count >= self._stalemate_limit:
                     break
-                
+                                
                 self.turn(player)
                 turn_count += 1
 
@@ -281,12 +323,14 @@ class Match:
         if len(self.active_players()) == 1:
             winner = self.active_players()[0]
             log.event(winner, "wins")
+            self._dataScraper.playerEliminated(self.active_players()[0].identifier, len(self.active_players()))
         else:
             for player in self.active_players():
+                self._dataScraper.playerEliminated(player.identifier, len(self.active_players()))
                 log.event(player, "draws")
 
         log.event("\n\n")
-        
+        self._dataScraper.endRound()
         return winner
 
     def turn(self, actor):
@@ -424,6 +468,10 @@ class Match:
         self.update_state()
         for player in self.players:
             player.notify_flip(self.identifier(loser), character)
+            
+        if len(loser.flipped) == 2:
+            self._dataScraper.playerEliminated(loser.identifier, len(self.active_players()) + 1)
+            
     
     def update_state(self):
         states = [PlayerState(x.identifier, x.coins, tuple(x.flipped))
