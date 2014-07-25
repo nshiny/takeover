@@ -20,7 +20,6 @@ def parallel(bots, threads, matches, iterations):
     final = Counter()
  
     if matches == 1:
-        print("one")
         final.update(worker(bots, iterations))
     else:
         futures = []
@@ -33,9 +32,9 @@ def parallel(bots, threads, matches, iterations):
             final.update(result.result())
         
     print("")
-    for key in sorted(final):
-        print(key, "%.4f" % (final[key] / (matches * iterations)),
-              "(" + str(final[key]) + ")")
+    for key, value in sorted(final.items(), key=lambda x: x[1], reverse=True):
+        print(key, "%.4f" % (value / (matches * iterations)),
+              "(" + str(value) + ")")
         
 
 def select_bots(num_players, required, excluded, names):
@@ -46,17 +45,17 @@ def select_bots(num_players, required, excluded, names):
 
     needed = num_players - len(required)
     
-    if len(names) - len(set(required)) < needed:
-        return required + [random.choice(names) for x in range(needed)]
+    if len(available) - len(set(required)) < needed:
+        return required + [random.choice(available) for x in range(needed)]
     
-    return required + random.sample(set(names) - set(required), needed)
+    return required + random.sample(set(available) - set(required), needed)
 
 
 def main(argv):
     threads = 6
-    matches = 6
+    matches = 5
     iterations = 10000
-    required = []
+    required = ["ugly_bot"]
     excluded = ["duke_or_die_bot"]
     num_players = 6
 
