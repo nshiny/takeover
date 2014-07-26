@@ -93,8 +93,8 @@ def compete(names, matches, iterations, ratings, threads):
 
 def main(argv):
     threads = 5
-    matches = 15
-    iterations = 1000
+    matches = 30
+    iterations = 10000
     ratings = True
     
     names = [x[:-3] for x in os.listdir("bots") if x[-3:] == ".py"]
