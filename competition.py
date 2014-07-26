@@ -68,6 +68,13 @@ def compete(names, matches, iterations, ratings, threads):
     started = time.clock()
     results = parallel_execute(threads, groups, iterations)
     results = list(chain.from_iterable(results))
+
+    # TrueSkill weights later results more heavily to account for skill
+    # changing over time. That doesn't happen across matches here,
+    # but there can be considerable variance between matches. Minimize
+    # that effect by interleaving all the match results.
+    results = list(chain.from_iterable(zip(results)))
+    
     print("Completed matches in", str(int(time.clock() - started)), "seconds")
     print("")
 
@@ -96,7 +103,7 @@ def compete(names, matches, iterations, ratings, threads):
 
 def main(argv):
     threads = 5
-    matches = 30
+    matches = 50
     iterations = 10000
     ratings = True
     

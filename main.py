@@ -3,7 +3,7 @@ import random
 import sys
 
 from game import log
-from competition import compete
+from competition import compete, EXCLUDED
 
 
 def select_bots(num_players, required, excluded, names):
@@ -21,9 +21,9 @@ def select_bots(num_players, required, excluded, names):
 
 
 def main(argv):
-    iterations = 10000
+    iterations = 10
     required = ["turtle_bot"]
-    excluded = ["duke_or_die_bot", "ultimateCHEATERBOT_obf"]
+    excluded = EXCLUDED
     num_players = 6
 
     # Note that there's no output when running more than one match
