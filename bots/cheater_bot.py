@@ -80,7 +80,7 @@ class StuBot(Bot):
         active = [x.identifier for x in self.states if len(x.flipped) < 2]
         #print (active)
         #print ("len:" +str(len(active)))
-        if len(active) == 1:
+        if len(active) == 1 and active[0] != self.identifier:
             #print ("winner:" + str(active[0]))
             self.winners[active[0]] += 1
             #time.sleep(5)
