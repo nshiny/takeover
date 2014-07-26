@@ -18,9 +18,6 @@ class Log:
     def event(self, *args):
         if self.verbose:
             print(self._format(*args))
-
-    def summary(self, *args):
-        print(self._format(*args)) 
               
     def _format(self, *args):
         parts = []
@@ -86,7 +83,7 @@ class Player:
         return len(self.flipped) < 2
 
     def start(self):
-        self._bot.start()
+        _try(self._bot.start)
 
     def take_action(self, valid_targets):
         result = _try(self._bot.take_action)
@@ -281,18 +278,16 @@ class Match:
         for x in range(count):
             result = self.play()
             if result is not None:
-                winners.append(result)
+                winners.append(result.name)
+            else:
+                winners.append(None)
 
         for bot in self._bots:
             _try(bot.notify_end)
         
         self._dataScraper.endMatch()
 
-        results = {x.__module__ + "@" + str(i) :
-                   sum(1 for w in winners if w.identifier == i)
-                   for i, x in enumerate(self._bots)}
-        results["draws"] = count - sum(x for x in results.values())
-        return results
+        return winners
 
     def play(self):
         self.deck = Deck()
