@@ -72,7 +72,7 @@ def compete(names, matches, iterations, ratings, threads):
     print("")
 
     # Remove any bots that didn't play to avoid singularities.
-    names = set(chain(*groups))
+    names = set(chain.from_iterable(groups))
 
     totals = []
     for name in names:
