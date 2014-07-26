@@ -71,6 +71,9 @@ def compete(names, matches, iterations, ratings, threads):
     print("Completed matches in", str(int(time.clock() - started)), "seconds")
     print("")
 
+    # Remove any bots that didn't play to avoid singularities.
+    names = set(chain(*groups))
+
     totals = []
     for name in names:
         wins = sum(sum(1 for y in x if y[0] == name and y[1])
