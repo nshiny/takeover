@@ -78,6 +78,11 @@ def compete(names, matches, iterations, ratings, threads):
     print("Completed matches in", str(int(time.clock() - started)), "seconds")
     print("")
 
+    if len(groups) == 1:  
+        for index, name in enumerate(groups[0]):
+            print(name + "@" + str(index))
+        print("")
+
     # Remove any bots that didn't play to avoid singularities.
     names = set(chain.from_iterable(groups))
 
