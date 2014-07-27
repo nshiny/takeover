@@ -34,6 +34,10 @@ def main(argv):
     
     bots = select_bots(num_players, required, excluded, names)
 
+    for index, bot in enumerate(bots):
+        print(bot + "@" + str(index))
+    print("")
+
     compete(bots, 1, iterations, False, 1)
 
             
