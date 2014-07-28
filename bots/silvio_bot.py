@@ -96,8 +96,8 @@ class SilvioBot(Bot):
         return self.hidden[0]
 
     def exchange(self, drawn):
-        prioritized = self._prioritize(list(self.hidden) + list(drawn))
         self.aCards = drawn
+        prioritized = self._prioritize(list(self.hidden) + list(drawn))
         return prioritized[-2:]
 
     def reveal(self, challenger, action, character, taret):
@@ -108,19 +108,19 @@ class SilvioBot(Bot):
 
     def _prioritize(self, characters):
         prioritized = []
-        groi = None
-        if len(self.hidden) == 2 and self.hidden[0] == self.hidden[1]:
-            groi = self.hidden[0]
-
         pc = [Character.duke, Character.captain, Character.ambassador, Character.assassin, Character.contessa]
-
+        duplicates = []
+        
         for char in pc:
-            if groi != char and char in characters:
-                prioritized.extend([char])
+            if char in characters:
+                prioritized.append(char)
+            if characters.count(char) > 1:
+                duplicates.extend([char] * (characters.count(char) - 1))
 
         #protect from badness
-        if len(prioritized) == 1:
-            prioritized.extend([groi])
+        for char in pc:
+            if char in duplicates:
+                prioritized.extend([char] * duplicates.count(char))
 
         return prioritized		
 		
