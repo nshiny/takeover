@@ -3,7 +3,6 @@ from itertools import cycle
 
 import collections
 import random
-import time
 import traceback
 
 from interface import Action, TargetedAction, Character, PlayerState
@@ -11,7 +10,7 @@ from interface import Action, TargetedAction, Character, PlayerState
 
 class Log:
     def __init__(self):
-        self.verbose = True
+        self.verbose = False
     
     def warn(self, *args):
         print("Warning: " + self._format(*args))
@@ -19,9 +18,6 @@ class Log:
     def event(self, *args):
         if self.verbose:
             print(self._format(*args))
-
-    def summary(self, *args):
-        print(self._format(*args)) 
               
     def _format(self, *args):
         parts = []
@@ -87,7 +83,7 @@ class Player:
         return len(self.flipped) < 2
 
     def start(self):
-        self._bot.start()
+        _try(self._bot.start)
 
     def take_action(self, valid_targets):
         result = _try(self._bot.take_action)
@@ -229,9 +225,9 @@ class Player:
             
 
 class DataScraper:
-    def __init__(self, keepStats=False):
-        self._trackData = keepStats
-        if keepStats:
+    def __init__(self, keep_stats=False):
+        self._trackData = keep_stats
+        if keep_stats:
             global pandas
             global matplotlib
             import pandas
@@ -262,11 +258,12 @@ class DataScraper:
     def endMatch(self):
         if self._trackData:
             self._playerDataFrame.to_csv('matchData.csv', index=False)
-        
+
+
 class Match:
     """A set of bots in a fixed table order playing a series of rounds."""
-    
-    def __init__(self, bot_modules,keepStats=False):
+
+    def __init__(self, bot_modules, keep_stats=False):
         self._stalemate_limit = 600
         self._bots = []
         self._currentRoundPlaces = {}
@@ -274,28 +271,23 @@ class Match:
         for index, module in enumerate(bot_modules):
             self._bots.append(module.make_bot(index))
         
-        self._dataScraper = DataScraper(keepStats)
+        self._dataScraper = DataScraper(keep_stats)
 
     def repeat(self, count):
-        started = time.clock()
         winners = []
         for x in range(count):
             result = self.play()
             if result is not None:
-                winners.append(result)
+                winners.append(result.name)
+            else:
+                winners.append(None)
 
         for bot in self._bots:
             _try(bot.notify_end)
-
-        log.summary("Completed in", str(int(time.clock() - started)), "seconds")
-        log.summary("")
-        for i, x in enumerate(self._bots):
-            wins = sum(1 for w in winners if w.identifier == i)
-            name = x.__module__ + "@" + str(i)
-            log.summary(name, float(wins) / float(count))
-        log.summary("draws", float(count - len(winners)) / float(count))
         
         self._dataScraper.endMatch()
+
+        return winners
 
     def play(self):
         self.deck = Deck()

@@ -2,45 +2,39 @@ import os
 import random
 import sys
 
-sys.path.append("bots")
-from game import Match, log
+from game import log
+from competition import compete, EXCLUDED
 
 
-def get_bots(path):
-    names = [x[:-3] for x in os.listdir(path) if x[-3:] == ".py"]
-    names.remove("__init__")
-
-    return [__import__(x) for x in names]
-
-
-def select_bots(num_players, required, excluded, bots):
-    named = {x.__name__ : x for x in bots}
-    required = [named[x] for x in required]
-    bots = [x for x in bots if x.__name__ not in excluded]
+def select_bots(num_players, required, excluded, names):
+    available = [x for x in names if x not in excluded]
     
     if len(required) >= num_players:
         return random.sample(required, num_players)
 
     needed = num_players - len(required)
     
-    if len(bots) - len(set(required)) < needed:
-        return required + [random.choice(bots) for x in range(needed)]
+    if len(available) - len(set(required)) < needed:
+        return required + [random.choice(available) for x in range(needed)]
     
-    return required + random.sample(set(bots) - set(required), needed)
+    return required + random.sample(set(available) - set(required), needed)
 
 
 def main(argv):
-    iterations = 1
-    verbose = True
+    iterations = 10
     required = ["turtle_bot"]
-    excluded = []
+    excluded = EXCLUDED
     num_players = 6
+
+    # Note that there's no output when running more than one match
+    log.verbose = True
     
-    log.verbose = verbose
-    bots = get_bots("bots")
+    names = [x[:-3] for x in os.listdir("bots") if x[-3:] == ".py"]
+    names.remove("__init__")
     
-    match = Match(select_bots(num_players, required, excluded, bots))
-    match.repeat(iterations)
+    bots = select_bots(num_players, required, excluded, names)
+
+    compete(bots, 1, iterations, False, 1)
 
             
 if __name__ == "__main__":

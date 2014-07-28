@@ -6,9 +6,11 @@ import random
 class EthanBot(Bot):
     def __init__(self, identifier):
         self.identifier = identifier
+        # self.
 
     def start(self):
         """Reset all the things!"""
+        # self
         pass
         
     def update_state(self, states, hidden):
@@ -16,13 +18,7 @@ class EthanBot(Bot):
         self.hidden = hidden
         
     def take_action(self):
-        # active = [x.identifier for x in self.states if x.identifier != self.identifier and len(x.flipped) < 2]
-        # activeAndRich = active = [x.identifier for x in self.states if x.identifier != self.identifier and len(x.flipped) < 2 and x.coins > 0]
-        # if len(activeAndRich) > 0:
-            # target = activeAndRich[0]
-        # else:
-            # target = random.choice(active)
-        target = self._other_players()[0].identifier
+        otherPlayers = self._other_players()
 
         coins = self.states[self.identifier].coins
         
@@ -32,13 +28,18 @@ class EthanBot(Bot):
         allKnown += self.hidden
 
         if coins >= 7:
-            return TargetedAction(Action.coup, target)
+            return TargetedAction(Action.coup, otherPlayers[0].identifier)
         if Character.duke in self.hidden:
             return Action.tax
         elif Character.captain not in self.hidden and allKnown.count(Character.captain) < 3:
             return Action.exchange
+        # elif Character.captain in self.hidden:
+        elif Character.captain in self.hidden or allKnown.count(Character.captain) < 3:
+            return TargetedAction(Action.extort, otherPlayers[0].identifier)
+        elif allKnown.count(Character.duke) == 3:
+            return Action.foreign_aid
         else:
-            return TargetedAction(Action.extort, target)
+            return Action.income
         
     def block_action(self, actor, action, character, target):
         if len(self.hidden) > 0 and action.blockable(self.hidden[0]):
@@ -68,6 +69,10 @@ class EthanBot(Bot):
     def exchange(self, drawn):
         prioritized = self._prioritize(list(self.hidden) + list(drawn))
         # print("Prioritized: " + str(prioritized))
+        
+        if prioritized[0] == prioritized[1]:
+            prioritized[1], prioritized[2] = prioritized[2], prioritized[1]
+    
         return prioritized[-2:]
 
     def reveal(self, challenger, action, character, taret):
@@ -97,9 +102,9 @@ class EthanBot(Bot):
         prioritized.extend(
             [Character.duke] * characters.count(Character.duke))
         prioritized.extend(
-            [Character.ambassador] * characters.count(Character.ambassador))
-        prioritized.extend(
             [Character.contessa] * characters.count(Character.contessa))
+        prioritized.extend(
+            [Character.ambassador] * characters.count(Character.ambassador))
         prioritized.extend(
             [Character.assassin] * characters.count(Character.assassin))
         
@@ -107,9 +112,9 @@ class EthanBot(Bot):
     
     def _other_players(self):
         targetList = [x for x in self.states if x.identifier != self.identifier and len(x.flipped) < 2]
-        targetList = sorted(targetList, key=attrgetter('coins'), reverse=True)
-        targetList = sorted(targetList, key=lambda x: len(x.flipped))
-        #print("Target List is: " + str(targetList))
+        targetList.sort(key=attrgetter('coins'), reverse=True)
+        targetList.sort(key=lambda x: len(x.flipped))
+        # print("Target List is: " + str(targetList))
         
         return targetList
 
