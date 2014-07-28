@@ -12,7 +12,7 @@ from game import Match
 
 # Excluded bots are those that don't try to win, or that are broken
 # in a way that breaks the competition.
-EXCLUDED = ["duke_or_die_bot", "ultimateCHEATERBOT_obf", "sable_secret_bot"]
+EXCLUDED = ["duke_or_die_bot", "ultimateCHEATERBOT_obf"]
 
 NUM_PLAYERS = 6
 
