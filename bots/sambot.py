@@ -27,9 +27,6 @@ class SamBot(Bot):
         self.hidden = hidden
         # self.revealed.extend([x.flipped for x in states])
 
-    def notify_end(self):
-        pass
-
     def take_action(self):
         active = [x.identifier for x in self.states if len(x.flipped) < 2]
         active.remove(self.identifier)
@@ -72,7 +69,7 @@ class SamBot(Bot):
             return TargetedAction(Action.extort, target)
         elif Character.duke in self.hidden: # if we have the duke, tax
             return Action.tax
-        elif Character.captain not in self.hidden:
+        elif Character.captain not in self.hidden and len(self.hidden) >2 and self.samTurn % 2 == 0:
             return Action.exchange
         #elif Character.duke not in self.hidden: # if we don't have a duke, exchange until we do
             #return Action.exchange
@@ -80,4 +77,66 @@ class SamBot(Bot):
             return Action.income
 
     def challenge(self, actor, action, character, target):
-        #if action == Action.exchange and 
+        #if action == Action.exchange and self.samTurn > 7 and Character.ambassador in self.hidden:
+            #return True
+        if action == Action.foreign_aid:
+            if Character.duke in self.hidden:
+                return True
+        #if action == Action.block and character == Character.ambassador and self.samTurn > 7:
+            #return True
+        #if action == Action.block and character == Character.contessa and len(self.hidden) > 1:
+            #return True
+        return False
+        
+    def block_action(self, actor, action, character, target):
+        if len(self.hidden) > 0 and action.blockable(self.hidden[0]):
+            return self.hidden[0]
+
+        if len(self.hidden) > 1 and action.blockable(self.hidden[1]):
+            return self.hidden[1]
+            
+        if action == Action.assassinate and len(self.hidden) > 1:
+            return Character.contessa    
+
+        return None
+
+    def _prioritize(self, characters):
+        prioritized = []
+        prioritized.extend(
+            [Character.duke] * characters.count(Character.duke))
+        prioritized.extend(
+            [Character.captain] * characters.count(Character.captain))
+        prioritized.extend(
+            [Character.contessa] * characters.count(Character.contessa))
+        prioritized.extend(
+            [Character.assassin] * characters.count(Character.assassin))
+        prioritized.extend(
+            [Character.ambassador] * characters.count(Character.ambassador))
+
+        
+        return prioritized 
+
+    def exchange(self, drawn):
+        prioritized = self._prioritize(list(self.hidden) + list(drawn))
+        return prioritized[-2:]
+
+    def flip(self):
+        if Character.ambassador in self.hidden:
+            return Character.ambassador
+        if Character.captain in self.hidden:
+            return Character.captain
+        if Character.duke in self.hidden:
+            return Character.duke
+        if Character.assassin in self.hidden:
+            return Character.assassin
+        if Character.contessa in self.hidden:
+            return Character.contessa
+
+    def reveal(self, challenger, action, character, taret):
+        if character in self.hidden:
+            return character
+
+        return self.flip()
+
+def make_bot(identifier):
+    return SamBot(identifier)
