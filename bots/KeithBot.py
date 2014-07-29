@@ -21,6 +21,11 @@ class KeithBot(Bot):
                 self.claims[actor] = {}
                 self.claims[actor]["canBeExtorted"] = False
                 self.claims[actor]["canBeAssassinated"] = False
+
+            if target not in self.claims:
+                self.claims[target] = {}
+                self.claims[target]["canBeExtorted"] = False
+                self.claims[target]["canBeAssassinated"] = False
             if action not in self.claims[actor]:
                 self.claims[actor][action] = 1
             else:
@@ -32,10 +37,10 @@ class KeithBot(Bot):
             self.claims[actor]["canBeAssassinated"] = False
 
         if succeeded and action == Action.extort:
-            self.claims[actor]["canBeExtorted"] = True
+            self.claims[target]["canBeExtorted"] = True
 
         if succeeded and action == Action.assassinate:
-            self.claims[actor]["canBeAssassinated"] = True
+            self.claims[target]["canBeAssassinated"] = True
 
     def challenge(self, actor, action, character, target):
         #Mostly shamelessly stolen from Jake's bot
@@ -76,11 +81,11 @@ class KeithBot(Bot):
                 #well look at that, I can coup you now, DIE!
                 if self.states[self.identifier].coins >= 7:
                     return TargetedAction(Action.coup, target.identifier)
-            #if I'm pretty sure I can assassinate the last dude, do so
+            #if I'm pretty sure I can assassinate the last dude. Do so
             if Character.assassin in self.hidden and self.states[self.identifier].coins >= 3 and allKnown.count(Character.assassin) == 3:
                 return TargetedAction(Action.assassinate, target.identifier)
-            #if I'm pretty sure I can extort the last dude, do so
-            if Character.captain in self.hidden and allKnown.count(Character.captain) == 3 and target.coins >= 2:
+            #if I'm pretty sure I can extort the last dude. Do so
+            if Character.captain in self.hidden and (allKnown.count(Character.captain) == 3 or self.claims[target.identifier]["canBeExtorted"]) and target.coins >= 2:
                 return TargetedAction(Action.extort, target.identifier)
 
         #ABD: Always Be Duking (round 1)
@@ -92,8 +97,8 @@ class KeithBot(Bot):
         #If you have the captain, extort someone who's been extorted before
         if Character.captain in self.hidden and allKnown.count(Character.captain) == 3:
             for y in active:
-                if y in self.claims and self.claims[y]["canBeExtorted"] and self.states[y].coins >= 2:
-                    return TargetedAction(Action.extort, y)
+                if y.identifier in self.claims and self.claims[y.identifier]["canBeExtorted"] and y.coins >= 2:
+                    return TargetedAction(Action.extort, y.identifier)
         #If you have 7 dollars, coup some dude
         if self.states[self.identifier].coins >= 7:
             return TargetedAction(Action.coup, target.identifier)
