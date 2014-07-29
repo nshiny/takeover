@@ -3,6 +3,7 @@ from interface import *
 from collections import namedtuple, Counter
 import itertools
 import random
+import math
 
 
 NUM_PLAYERS = 6
@@ -36,11 +37,13 @@ class Tactics:
         self._current_response = {}
         
         self._actions = []
+        self._actions.append(self.first_exchange)
         self._actions.append(self.obvious_assassinate)
         self._actions.append(self.takeover)
         self._actions.append(self.early_assassinate)
         self._actions.append(self.unblockable_captain)
         self._actions.append(self.claim_duke)
+        self._actions.append(self.aggressive_captain)
         self._actions.append(self.obvious_foreign_aid)
         self._actions.append(self.income)
 
@@ -51,9 +54,10 @@ class Tactics:
         self._responses = []
         self._responses.append(self.obvious_response)
         self._responses.append(self.repeat_response)
+        self._responses.append(self.desperate_response)
         
-        self._outcomes = {x.__name__ : Counter() for x in
-                          self._actions + self._blocks + self._responses}
+        self._outcomes = self._create_outcomes()
+        self._totals = self._create_outcomes()
 
     def decide_action(self):
         self._current_action = {"attempted" : 1}
@@ -67,6 +71,10 @@ class Tactics:
         self._current_response = {"attempted" : 1}
         return bool(self._decide(
             self._responses, self._current_response, *args))
+
+    def _create_outcomes(self):
+        return {x.__name__ : Counter() for x in
+                self._actions + self._blocks + self._responses}
     
     def _decide(self, choices, current, *args):
         for choice in choices:
@@ -96,6 +104,12 @@ class Tactics:
 
         return challenged < 0.01
 
+    def first_exchange(self):
+        if (Character.captain not in self._state.hidden and
+            Character.duke not in self._state.hidden and
+            self._cards.exchanged() < 1):
+            return Action.exchange
+
     def obvious_assassinate(self):
         if self._state.coins() >= 3:
             for target in self._dangers.prioritized(
@@ -124,11 +138,19 @@ class Tactics:
             wealth = 1
         for target in self._dangers.prioritized(
             [x for x in self._state.other_players()
-             if self._cards.absent(x, Character.captain) and
-             self._cards.absent(x, Character.ambassador) and
+             if self._cards.captainable(x) and
              self._state.coins(x) >= wealth]):
             if self._claim_character(Character.captain, target):              
-                return TargetedAction(Action.extort, target)       
+                return TargetedAction(Action.extort, target)
+
+    def aggressive_captain(self):
+        for target in self._dangers.prioritized(
+            [x for x in self._state.other_players() if
+             self._state.coins(x) > 2 and
+             not self._cards.claimed(x, Character.captain) and
+             not self._cards.claimed(x, Character.ambassador)]):
+            if self._claim_character(Character.captain, target):              
+                return TargetedAction(Action.extort, target)
 
     def claim_duke(self):
         if self._claim_character(Character.duke, None):
@@ -158,13 +180,24 @@ class Tactics:
         if self._cards.remaining(character) == 0:
             return True
 
-        if self._cards.absent(actor, character):
-            return True
-
     def repeat_response(self, actor, action, character, target):
         # It's okay to fall for the long Kwan.
         if self._cards.absent(actor, character):
             return True
+
+    def desperate_response(self, actor, action, character, target):
+        if len(self._state.other_players()) == 1:
+            if self._state.influence() == 1:
+                if actor != self._state.identifier:
+                    next_coins = self._state.coins(actor)
+                    next_coins += self._cards.income(actor)
+
+                    if Character.captain in self._state.hidden:
+                        if self._cards.captainable(actor):
+                            next_coins -= 2
+                    
+                    if next_coins >= 7:
+                        return True
 
     def notify_action(self, actor, action, target, succeeded):
         if actor == self._state.identifier:
@@ -173,6 +206,18 @@ class Tactics:
             name = self._current_action["name"]
             del self._current_action["name"]
             self._outcomes[name].update(self._current_action)
+
+        if len(self._state.active_players()) == 1:
+            flag = "lost"
+            if len(self._state.other_players()) == 0:
+                flag = "won"                
+
+            for action, outcomes in self._outcomes.items():
+                outcomes[flag] = outcomes["attempted"]
+                self._totals[action].update(outcomes)
+
+            self._outcomes = self._create_outcomes()
+        
 
     def notify_block(self, blocker, character, actor, action, succeeded):
         if actor == self._state.identifier:
@@ -211,7 +256,7 @@ class Tactics:
         if not DIAGNOSTICS:
             return
         
-        for k, v in self._outcomes.items():
+        for k, v in self._totals.items():
             print(k)
             for x, y in v.items():
                 print("   ", x, y)
@@ -231,10 +276,10 @@ class UglyBot(Bot):
         self.cards = CardTracker(self.state)
         self.listeners.add(self.cards)
 
-        self.challenges = ChallengeTracker()
+        self.challenges = ChallengeTracker(self.state)
         self.listeners.add(self.challenges)
 
-        self.dangers = DangerTracker(self.state)
+        self.dangers = DangerTracker(self.state, self.cards)
         self.listeners.add(self.dangers)
 
         self.tactics = Tactics(
@@ -285,16 +330,20 @@ class UglyBot(Bot):
     def flip(self): 
         priority = [Character.captain,
                     Character.duke,
+                    Character.ambassador,
                     Character.contessa,
-                    Character.assassin,
-                    Character.ambassador]
+                    Character.assassin]
 
         for worst in reversed(priority):
             if worst in self.state.hidden:
                 return worst
 
     def exchange(self, drawn):
-        pass
+        self.state.hidden += drawn
+        result = [self.flip()]
+        self.state.hidden.remove(result[0])
+        result.append(self.flip())
+        return result
 
     def reveal(self, challenger, action, character, taret):
         if character in self.state.hidden:
@@ -304,10 +353,11 @@ class UglyBot(Bot):
 
 
 class ChallengeTracker:
-    def __init__(self):
+    def __init__(self, state):
+        self._state = state
         self._attempted_challenges = {x : Counter() for x in range(NUM_PLAYERS)}
         self._potential_challenges = {x : Counter() for x in range(NUM_PLAYERS)}
-
+        
     def expect_challenge(self, challenger, character):
         if self._potential_challenges[challenger][character] > 0:
             if(self._attempted_challenges[challenger][character] > 5 or
@@ -320,12 +370,12 @@ class ChallengeTracker:
 
     def challenge(self, actor, action, character, target):
         # Conflates challenging actions with challenging blocks.
-        
+
         if target is not None:
             # Pretends nobody will challenge actions that target others.
             self._potential_challenges[target].update([character])
         else:
-            for x in range(NUM_PLAYERS):
+            for x in self._state.active_players():
                 self._potential_challenges[x].update([character])
         
     def notify_challenge(self, challenger, actor, action,
@@ -345,13 +395,14 @@ class ChallengeTracker:
 
 
 class DangerTracker:
-    def __init__(self, state):
+    def __init__(self, state, cards):
         self._state = state
+        self._cards = cards
         self._placed = Counter()
         self._killers = Counter()
         self._attacks = Counter()
         self._survived = Counter()
-        self._last = None
+        self._last = False
 
     def threats(self):
         return [x for x in self._state.other_players()
@@ -371,7 +422,15 @@ class DangerTracker:
         scores = {}
         for player in players:
             score = self._state.coins(player)
-            
+
+            score += self._cards.income(player)
+
+            if len(self._state.other_players()) == 2:
+                if all(self._state.influence(x) == 1
+                       for x in self._state.other_players()):
+                    if not self.income_duel(player):
+                        score += 200
+                        
             if self._state.influence(player) > 1:
                 score += 6
 
@@ -387,6 +446,45 @@ class DangerTracker:
         
         return [x[0] for x in sorted(
             scores.items(), key=lambda x: x[1], reverse=True)]
+
+    def income_duel(self, target):
+        self_coins = 7
+        if Character.assassin in self._state.hidden:
+            if self._cards.absent(target, Character.contessa):
+                self_coints = 3
+        
+        target_coins = 7
+        if Character.contessa not in self._state.hidden:
+            if self._cards.claimed(target, Character.assassin):
+                target_coins = 3
+
+        self_income = self._cards.income(self._state.identifier, [target])
+        if (self._cards.claimed(target, Character.captain) and
+            self._cards.captainable(self._state.identifier)):
+            self_income -= 2
+
+        if self_income == 0:
+            return False
+        
+        target_income = self._cards.income(target, [self._state.identifier])
+        if (Character.captain in self._state.hidden and
+            self._cards.captainable(target)):
+            target_income -= 2
+
+        if target_income == 0:
+            return True
+
+        self_turns = self._state.influence(target) * self_coins
+        self_turns -= self._state.coins()
+        self_turns /= self_income
+        self_turns = math.ceil(self_turns)
+
+        target_turns = self._state.influence() * target_coins
+        target_turns -= self._state.coins(target)
+        target_turns /= target_income
+        target_turns = math.ceil(target_turns)
+
+        return self_turns <= target_turns
 
     def survival(self, player):
         total = sum(self._survived.values())
@@ -408,20 +506,23 @@ class DangerTracker:
         return killers[player] / mean
 
     def notify_action(self, actor, action, target, succeeded):
-        if self._state.turn == self._last:
-            if target == self._state.identifier and succeeded:
-                if action in [Action.coup, Action.assassinate]:
-                    self._killers.update([actor])
-                    self._attacks.update([action])
+        if self._last:
+            self._last = False
+            if (target == self._state.identifier and succeeded and
+                action in [Action.coup, Action.assassinate]):
+                self._killers.update([actor])
+                self._attacks.update([action])
+            else:
+                self._killers.update([self._state.identifier])
 
     def notify_flip(self, player, flipped):
         if player == self._state.identifier:
             if self._state.influence() == 0:
-                self._last = self._state.turn
+                self._last = True
                 self._survived.update(self._state.other_players())
                 self._placed.update([len(self._state.other_players())])
 
-        if self._state.other_players() == 0:
+        if len(self._state.other_players()) == 0:
              self._placed.update([0])
 
     def notify_end(self):
@@ -452,7 +553,6 @@ class DangerTracker:
 class CardTracker:
     def __init__(self, state):
         self._state = state
-        self.start()
         
     def without(self, character):
         return [k for k, v in self._absent.items()
@@ -469,25 +569,53 @@ class CardTracker:
         return character in self._claimed[player]
 
     def remaining(self, character):
-        return 3 - sum(1 for x in self.unavailable() if x == character)
+        visible = [x for x in self._visible.values()]
+        unavailable = itertools.chain(self._hidden, visible)
+        return 3 - sum(1 for x in unavailable if x == character)
 
-    def unavailable(self):
-        return itertools.chain(self._hidden, self.visible())
+    def captainable(self, player):
+        if player is self._state.identifier:
+            return (Character.ambassador not in self._hidden
+                    and Character.captain not in self._hidden)
 
-    def visible(self):
-        return [x for x in self._visible.values()]
+        return (self.absent(player, Character.captain) and
+                self.absent(player, Character.ambassador))
+
+    def income(self, player, others=None):
+        if others is None:
+            others = [x for x in self._state.active_players() if x != player]
+
+        if self.claimed(player, Character.duke):
+            return 3
+
+        if self.claimed(player, Character.captain):
+            if any(self.captainable(x) for x in others):
+                return 2
+
+        if all(self.absent(x, Character.duke) for x in others):
+            return 2
+
+        return 1
+
+    def exchanged(self, player=None):
+        if player is None:
+            player = self._state.identifier
+
+        return self._exchanged[player]
 
     def start(self):
         self._hidden = None
         self._visible = None
         self._absent = None
         self._claimed = None
+        self._exchanged = {x : 0 for x in range(NUM_PLAYERS)}
     
     def challenge(self, actor, action, character, target):
         self._claimed[actor].add(action.required_character())    
 
     def notify_action(self, actor, action, target, succeeded):
         if succeeded and action == Action.exchange:
+            self._exchanged[actor] += 1
             self._reset_cards(actor)
 
         if succeeded and action.blockable() and target is not None:
@@ -539,10 +667,8 @@ class CardTracker:
 class StateTracker:
     def __init__(self, identifier):
         self.identifier = identifier
-        self.round = -1
         self.hidden = None
         self._states = None
-        self.start()
 
     def coins(self, player=None):
         if player is None:
@@ -559,15 +685,14 @@ class StateTracker:
                 if x.identifier == player][0]
 
     def other_players(self):
-        return [x.identifier for x in self._states if len(x.flipped) < 2
-                and x.identifier != self.identifier]
+        return [x for x in self.active_players() if x != self.identifier]
 
-    def start(self):
-        self.turn = 0
+    def active_players(self):
+        return [x.identifier for x in self._states if len(x.flipped) < 2]
 
     def update_state(self, states, hidden):
         self._states = states
-        self.hidden = hidden
+        self.hidden = list(hidden)
     
 
 class ListenerManager:
