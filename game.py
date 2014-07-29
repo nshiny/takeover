@@ -72,10 +72,12 @@ class Player:
         self.hidden = drawn
 
     def __str__(self):
+        cards = [x.short() for x in self.hidden]
+        cards.extend(["!" + x.short() for x in self.flipped])
+        
         text = self.name + "@" + str(self.identifier)
         text += "[" + str(self.coins) + "]"
-        text += "[" + ",".join([x.short() for x in self.hidden]) + "]"
-        text += "[" + ",".join([x.short() for x in self.flipped]) + "]"
+        text += "[" + ",".join(cards) + "]"
         return text
 
     @property
