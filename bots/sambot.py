@@ -50,22 +50,24 @@ class SamBot(Bot):
         self.active_fanciest = self.active_fancy[0] 
         target = ''.join(map(str, self.active_fanciest))
 
-
         self.samTurn += 1 
         target = random.choice(active)
 
+        # The jamz:
         if coins >= 7: 
             return TargetedAction(Action.coup, target)
         elif self.samTurn == 1:
-            return TargetedAction(Action.extort, target)
+            return Action.income
+        #elif self.samTurn == 2:
+            #return TargetedAction(Action.extort, target)
         elif Character.assassin in self.hidden and coins > 2:
             return TargetedAction(Action.assassinate, target)
-        elif self.revealed.count(1) >= 2 and self.samTurn % 2 == 1:
+        elif self.revealed.count(1) == 3 and self.samTurn % 2 == 1:
             return Action.foreign_aid
-        elif Character.captain in self.hidden:
-            return TargetedAction(Action.extort, target)
         elif Character.duke in self.hidden:
             return Action.tax
+        elif Character.captain in self.hidden:
+            return TargetedAction(Action.extort, target)
         elif Character.captain not in self.hidden and len(self.hidden) >2 and self.samTurn % 2 == 0:
             return Action.exchange
         else:
@@ -77,7 +79,7 @@ class SamBot(Bot):
     def challenge(self, actor, action, character, target):
         if action == Action.block and target == self.identifier and character == Character.duke and self.revealed.count(1) == 3:
             return True
-        if action == Action.tax and self.revealed.count(1) >= 2:
+        if action == Action.tax and self.revealed.count(1) == 3:
             return True
         if action == Action.extort and self.revealed.count(4) == 3:
             return True
