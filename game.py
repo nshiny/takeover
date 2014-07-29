@@ -176,6 +176,8 @@ class Player:
         if len(self.hidden) == 0:
             log.event(self, "loses")
 
+        return result
+
     def exchange(self, drawn):
         result = _try(self._bot.exchange, tuple(drawn))
 
