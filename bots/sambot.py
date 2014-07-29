@@ -1,5 +1,6 @@
 from interface import *
 from operator import itemgetter, attrgetter
+from collections import Counter
 import random
 
 class SamBot(Bot):
@@ -8,6 +9,7 @@ class SamBot(Bot):
         self.samTurn = 0
         self.coinage = []
         self.revealed = []
+        self.revealedcon = []
         self.active_fancy = []
         self.fancy_pantsers = []
         self.ordered_fancies = []
@@ -17,6 +19,7 @@ class SamBot(Bot):
         self.samTurn = 0
         self.coinage = []
         self.revealed = []
+        self.revealedcon = []
         self.active_fancy = []
         self.fancy_pantsers = []
         self.ordered_fancies = []
@@ -25,67 +28,66 @@ class SamBot(Bot):
     def update_state(self, states, hidden):
         self.states = states
         self.hidden = hidden
-        # self.revealed.extend([x.flipped for x in states])
 
     def take_action(self):
         active = [x.identifier for x in self.states if len(x.flipped) < 2]
         active.remove(self.identifier)
         self.coinage = []
-        self.revealed = []
         self.active_fancy = []
         self.fancy_pantsers = []
         self.ordered_fancies = []
         self.them_not_me = []
-        coins = self.states[self.identifier].coins #determine how many coins I have
+        coins = self.states[self.identifier].coins 
         for x in self.states: 
-            self.coinage.append([x.coins, x.identifier]) # populate self.coinage with a list of [COINS, PLAYERS] lists
-        self.ordered_fancies =  (sorted(self.coinage, key=itemgetter(0), reverse=True)) # sort coinage into sorted_coinage
-        for x in self.ordered_fancies: #delete the coins out of ordered_fancies
+            self.coinage.append([x.coins, x.identifier]) 
+        self.ordered_fancies =  (sorted(self.coinage, key=itemgetter(0), reverse=True)) 
+        for x in self.ordered_fancies: 
             del x[0]
         self.them_not_me = self.ordered_fancies
-        if ([self.identifier]) in self.them_not_me: self.them_not_me.remove([self.identifier]) # remove myself from self.them_not_me
-        #self.fancy_pantser = (((sorted(self.sorted_coinage, key=itemgetter(0), reverse=True))[0])[1])
-        #for x in self.fancy_pantser:
-            #del x[1]
-        #if ([self.identifier]) in self.fancy_pantser: self.fancy_pantser.remove([self.identifier])
-        for x in active and self.them_not_me: #target only the active folks
+        if ([self.identifier]) in self.them_not_me: self.them_not_me.remove([self.identifier])
+        for x in active and self.them_not_me:
             self.active_fancy.append(x)
-        self.active_fanciest = self.active_fancy[0] #get only the richest
-        target = ''.join(map(str, self.active_fanciest)) # turn it into a useable INT
+        self.active_fanciest = self.active_fancy[0] 
+        target = ''.join(map(str, self.active_fanciest))
 
-        for x in self.states:
-            self.revealed.extend(x.flipped)
 
-        self.samTurn += 1 # every turn, increment the turn number
+        self.samTurn += 1 
         target = random.choice(active)
 
-        if coins >= 7: # coup if we have 7 coins
+        if coins >= 7: 
             return TargetedAction(Action.coup, target)
         elif self.samTurn == 1:
             return TargetedAction(Action.extort, target)
-        elif Character.assassin in self.hidden and coins > 2: # assassinate if we can
+        elif Character.assassin in self.hidden and coins > 2:
             return TargetedAction(Action.assassinate, target)
-        elif Character.captain in self.hidden: # if we have the captain, extort
+        elif self.revealed.count(1) >= 2 and self.samTurn % 2 == 1:
+            return Action.foreign_aid
+        elif Character.captain in self.hidden:
             return TargetedAction(Action.extort, target)
-        elif Character.duke in self.hidden: # if we have the duke, tax
+        elif Character.duke in self.hidden:
             return Action.tax
         elif Character.captain not in self.hidden and len(self.hidden) >2 and self.samTurn % 2 == 0:
             return Action.exchange
-        #elif Character.duke not in self.hidden: # if we don't have a duke, exchange until we do
-            #return Action.exchange
         else:
             return Action.income
 
+    def notify_flip(self, player, flipped):
+        self.revealed.extend([flipped.value])
+
     def challenge(self, actor, action, character, target):
-        #if action == Action.exchange and self.samTurn > 7 and Character.ambassador in self.hidden:
-            #return True
+        if action == Action.block and target == self.identifier and character == Character.duke and self.revealed.count(1) == 3:
+            return True
+        if action == Action.tax and self.revealed.count(1) >= 2:
+            return True
+        if action == Action.extort and self.revealed.count(4) == 3:
+            return True
         if action == Action.foreign_aid:
             if Character.duke in self.hidden:
                 return True
-        #if action == Action.block and character == Character.ambassador and self.samTurn > 7:
-            #return True
-        #if action == Action.block and character == Character.contessa and len(self.hidden) > 1:
-            #return True
+            elif self.revealed.count(1) == 3:
+                return True
+        if action == Action.assassinate and self.revealed.count(2) == 3:
+                return True
         return False
         
     def block_action(self, actor, action, character, target):
