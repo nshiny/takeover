@@ -5,9 +5,11 @@ import random
 class KeithBot(Bot):
     def __init__(self, identifier):
         self.identifier = identifier
+        self.turn = 0
 
     def start(self):
         self.claims = {}
+        self.turn = 1
 
     def update_state(self, states, hidden):
         self.states = states
@@ -40,13 +42,38 @@ class KeithBot(Bot):
 
         #if the player has made more claims than they have cards,
         #they are clearly lying this most recent time
-        if actor in self.claims:
-            if len(self.claims[actor]) > 2:
-                return True
+        #if actor in self.claims:
+        #    if len(self.claims[actor]) > 3:
+        #        return True
 
         return False
 
     def take_action(self):
+        self.turn += 1
+
+        remaining = []
+        for x in self.states:
+            if len(x.flipped) < 2 and x.identifier != self.identifier:
+                remaining.append(x.identifier)
+
+        #oh snap! I'm close to winning
+        if len(remaining) == 1:
+            playerId = remaining[0]
+            player = self.states[playerId]
+            #oh snap! they only have one influence left!
+            if len(player.flipped) == 1:
+                #well look at that, I can coup you now, DIE!
+                if self.states[self.identifier].coins >= 7:
+                    return TargetedAction(Action.coup, playerId)
+                if Character.assassin in self.hidden and self.states[self.identifier].coins >= 3:
+                    return TargetedAction(Action.assassinate, playerId)
+                if Character.captain in self.hidden:
+                    return TargetedAction(Action.extort, playerId)
+
+        if self.turn == 1:
+            return Action.tax
+        if Character.duke in self.hidden and self.states[self.identifier].coins <= 6:
+            return Action.tax
         if self.states[self.identifier].coins >= 7:
             active = [x.identifier for x in self.states if len(x.flipped) < 2]
             active.remove(self.identifier)
@@ -72,7 +99,7 @@ class KeithBot(Bot):
 
         return self.hidden[0]
 
-    def reveal(self, challenger, action, character, taret):
+    def reveal(self, challenger, action, character, target):
         if character in self.hidden:
             return character
 
