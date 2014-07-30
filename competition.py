@@ -2,6 +2,7 @@ from concurrent.futures import ProcessPoolExecutor
 from itertools import chain
 
 import argparse
+import json
 import os
 import random
 import sys
@@ -40,7 +41,7 @@ def parallel_execute(parallel, groups, iterations):
 
     return [x.result() for x in futures]
 
-def rate_skill(names, results):
+def rate_skill(names, results, metrics):
     from trueskill import Rating, rate, setup
     MU = 1000
     setup(MU, MU / 3, MU * 5, MU / 5000)
@@ -57,12 +58,12 @@ def rate_skill(names, results):
     print("")
 
     descending = sorted(ratings.items(), key=lambda x:x[1], reverse=True)
-    for name, rating in descending:
-        print(name)
-        print("   ", "Mu: %.0f" % rating.mu)
-        print("   ", "Sigma: %.0f" % rating.sigma)
-        print("")
+    for index, (name, rating) in enumerate(descending):
+        metrics[name]["Rank"] = index
+        metrics[name]["Mu"] = "%.0f" % rating.mu
+        metrics[name]["Sigma"] = "%.0f" % rating.sigma
 
+        
 def compete(names, matches, iterations, ratings, parallel):
     groups = [random.sample(names, NUM_PLAYERS) for x in range(matches)]
     
@@ -95,16 +96,17 @@ def compete(names, matches, iterations, ratings, parallel):
                    for x in results)
         totals.append((name, wins, played))
 
+    metrics = {x : {} for x in names}
     for name, wins, played in sorted(
         totals, key=lambda x: x[1] / x[2], reverse=True):
-        print(name)
-        print("   ", "Wins:", wins)
-        print("   ", "Played:", played)
-        print("   ", "Rate: %.4f" % (wins / played))
-        print("")
-
+        metrics[name]["Wins"] = wins
+        metrics[name]["Played"] = played
+        metrics[name]["Rate"] = "%.4f" % (wins / played)
+        
     if ratings:
-        rate_skill(names, results)
+        rate_skill(names, results, metrics)
+
+    return metrics
         
 
 def main(argv):
@@ -113,19 +115,32 @@ def main(argv):
                         help="number of parallel processes")
     parser.add_argument("-m", "--matches", type=int, default=50,
                         help="number of matches in the competition")
-    parser.add_argument("-i", "--iterations", type=int, default=10000,
+    parser.add_argument("-i", "--iterations", type=int, default=10,
                         help="number of iterations in a match")
     parser.add_argument("-s", "--skip-ratings", action="store_true",
                         help="skip ratings generation")
+    parser.add_argument("-j", "--json-file", default=None,
+                        help="path to file for json results output")
     args = parser.parse_args(argv)
     
     names = [x[:-3] for x in os.listdir("bots") if x[-3:] == ".py"]
     names.remove("__init__")
     names = [x for x in names if x not in EXCLUDED]
 
-    compete(names, args.matches, args.iterations,
-            not args.skip_ratings, args.parallel)
+    metrics = compete(names, args.matches, args.iterations,
+                      not args.skip_ratings, args.parallel)
     
+    if args.json_file is not None:
+        with open(args.json_file, "w") as file:
+            file.write(json.dumps(metrics, indent=4))    
+
+    metrics = sorted(metrics.items(), key=lambda x: x[1]["Rank"])
+    for name, entry in metrics:
+        print("")
+        print(name)
+        for key, value in entry.items():
+            print("   ", key, value)
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
