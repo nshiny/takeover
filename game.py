@@ -332,7 +332,8 @@ class Match:
         return winner
 
     def turn(self, actor):
-        valid_targets = [x.identifier for x in self.active_players()]
+        valid_targets = [x.identifier for x in self.active_players()
+                         if x != actor]
         action, target = actor.take_action(valid_targets)
 
         message = [actor, "selects", action]
