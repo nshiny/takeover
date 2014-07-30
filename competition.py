@@ -115,7 +115,7 @@ def main(argv):
                         help="number of parallel processes")
     parser.add_argument("-m", "--matches", type=int, default=50,
                         help="number of matches in the competition")
-    parser.add_argument("-i", "--iterations", type=int, default=10,
+    parser.add_argument("-i", "--iterations", type=int, default=10000,
                         help="number of iterations in a match")
     parser.add_argument("-s", "--skip-ratings", action="store_true",
                         help="skip ratings generation")
