@@ -1,6 +1,7 @@
 from concurrent.futures import ProcessPoolExecutor
 from itertools import chain
 
+import argparse
 import os
 import random
 import sys
@@ -25,14 +26,14 @@ def match_worker(bots, iterations):
     return [[(x, w == x) for x in bots] for w in winners]
 
 
-def parallel_execute(threads, groups, iterations):
+def parallel_execute(parallel, groups, iterations):
     results = []
     
     if len(groups) == 1:
         return [match_worker(groups[0], iterations)]
     else:
         futures = []
-        with ProcessPoolExecutor(max_workers=threads) as executor:             
+        with ProcessPoolExecutor(max_workers=parallel) as executor:             
             for group in groups:
                 futures.append(executor.submit(
                     match_worker, group, iterations))
@@ -62,11 +63,11 @@ def rate_skill(names, results):
         print("   ", "Sigma: %.0f" % rating.sigma)
         print("")
 
-def compete(names, matches, iterations, ratings, threads):
+def compete(names, matches, iterations, ratings, parallel):
     groups = [random.sample(names, NUM_PLAYERS) for x in range(matches)]
     
     started = time.clock()
-    results = parallel_execute(threads, groups, iterations)
+    results = parallel_execute(parallel, groups, iterations)
     results = list(chain.from_iterable(results))
 
     # TrueSkill weights later results more heavily to account for skill
@@ -107,17 +108,24 @@ def compete(names, matches, iterations, ratings, threads):
         
 
 def main(argv):
-    threads = 5
-    matches = 50
-    iterations = 10000
-    ratings = True
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--parallel", type=int, default=5,
+                        help="number of parallel processes")
+    parser.add_argument("-m", "--matches", type=int, default=50,
+                        help="number of matches in the competition")
+    parser.add_argument("-i", "--iterations", type=int, default=10000,
+                        help="number of iterations in a match")
+    parser.add_argument("-s", "--skip-ratings", action="store_true",
+                        help="skip ratings generation")
+    args = parser.parse_args(argv)
     
     names = [x[:-3] for x in os.listdir("bots") if x[-3:] == ".py"]
     names.remove("__init__")
     names = [x for x in names if x not in EXCLUDED]
 
-    compete(names, matches, iterations, ratings, threads)
+    compete(names, args.matches, args.iterations,
+            not args.skip_ratings, args.parallel)
     
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main(sys.argv[1:]))
