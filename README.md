@@ -3,6 +3,8 @@ takeover
 
 Python 3.4 is required; if you can't import Enum check your version.
 
+The trueskill python module is also required; install it with "easy_install trueskill" from a command prompt. You'll need to execute this from Python34/Scripts if python isn't in your path.
+
 Run the project with main.py. When parameters get added they should be documented there as well.
 
 Bots consist of a single python file committed to the bots directory; please limit names to alphanumeric characters and underscores. Poke me for commit access when you have a bot ready.
