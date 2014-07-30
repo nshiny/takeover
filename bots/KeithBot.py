@@ -21,6 +21,11 @@ class KeithBot(Bot):
                 self.claims[actor] = {}
                 self.claims[actor]["canBeExtorted"] = False
                 self.claims[actor]["canBeAssassinated"] = False
+
+            if target not in self.claims:
+                self.claims[target] = {}
+                self.claims[target]["canBeExtorted"] = False
+                self.claims[target]["canBeAssassinated"] = False
             if action not in self.claims[actor]:
                 self.claims[actor][action] = 1
             else:
@@ -32,10 +37,10 @@ class KeithBot(Bot):
             self.claims[actor]["canBeAssassinated"] = False
 
         if succeeded and action == Action.extort:
-            self.claims[actor]["canBeExtorted"] = True
+            self.claims[target]["canBeExtorted"] = True
 
         if succeeded and action == Action.assassinate:
-            self.claims[actor]["canBeAssassinated"] = True
+            self.claims[target]["canBeAssassinated"] = True
 
     def challenge(self, actor, action, character, target):
         #Mostly shamelessly stolen from Jake's bot
@@ -50,24 +55,19 @@ class KeithBot(Bot):
         if allKnown.count(character) == 3:
             return True
 
-        active = [x.identifier for x in self.states if len(x.flipped) < 2]
-        if self.identifier in active:
-            active.remove(self.identifier)
-
         return False
 
     def take_action(self):
         self.turn += 1
 
+        active = [x for x in self.states if len(x.flipped) < 2 and x.identifier != self.identifier]
+        active.sort(key=lambda x: x.coins, reverse=True)
+        active.sort(key=lambda x: len(x.flipped))
+        target = active[0]
+
         #If you have 10+ dollars, you must coup some dude
         if self.states[self.identifier].coins >= 10:
-            active = [x.identifier for x in self.states if len(x.flipped) < 2]
-            active.remove(self.identifier)
-            target = random.choice(active)
-            return TargetedAction(Action.coup, target)
-
-        active = [x.identifier for x in self.states if len(x.flipped) < 2]
-        active.remove(self.identifier)
+            return TargetedAction(Action.coup, target.identifier)
 
         allKnown = []
         for x in self.states:
@@ -76,19 +76,17 @@ class KeithBot(Bot):
 
         #oh snap! I'm close to winning
         if len(active) == 1:
-            playerId = active[0]
-            player = self.states[playerId]
             #oh snap! they only have one influence left!
-            if len(player.flipped) == 1:
+            if len(target.flipped) == 1:
                 #well look at that, I can coup you now, DIE!
                 if self.states[self.identifier].coins >= 7:
-                    return TargetedAction(Action.coup, playerId)
-            #if I'm pretty sure I can assassinate the last dude, do so
+                    return TargetedAction(Action.coup, target.identifier)
+            #if I'm pretty sure I can assassinate the last dude. Do so
             if Character.assassin in self.hidden and self.states[self.identifier].coins >= 3 and allKnown.count(Character.assassin) == 3:
-                return TargetedAction(Action.assassinate, playerId)
-            #if I'm pretty sure I can extort the last dude, do so
-            if Character.captain in self.hidden and allKnown.count(Character.captain) == 3:
-                return TargetedAction(Action.extort, playerId)
+                return TargetedAction(Action.assassinate, target.identifier)
+            #if I'm pretty sure I can extort the last dude. Do so
+            if Character.captain in self.hidden and (allKnown.count(Character.captain) == 3 or self.claims[target.identifier]["canBeExtorted"]) and target.coins >= 2:
+                return TargetedAction(Action.extort, target.identifier)
 
         #ABD: Always Be Duking (round 1)
         if self.turn == 1 or (self.turn == 3 and Character.duke in self.hidden):
@@ -99,12 +97,11 @@ class KeithBot(Bot):
         #If you have the captain, extort someone who's been extorted before
         if Character.captain in self.hidden and allKnown.count(Character.captain) == 3:
             for y in active:
-                if y in self.claims and self.claims[y]["canBeExtorted"]:
-                    return TargetedAction(Action.extort, y)
+                if y.identifier in self.claims and self.claims[y.identifier]["canBeExtorted"] and y.coins >= 2:
+                    return TargetedAction(Action.extort, y.identifier)
         #If you have 7 dollars, coup some dude
         if self.states[self.identifier].coins >= 7:
-            target = random.choice(active)
-            return TargetedAction(Action.coup, target)
+            return TargetedAction(Action.coup, target.identifier)
         #Turtle Turtle Turtle
         if allKnown.count(Character.duke) == 3:
             return Action.foreign_aid
