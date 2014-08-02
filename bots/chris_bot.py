@@ -8,6 +8,7 @@ import random
 class ChrisBot(Bot):
     def __init__(self, identifier):
         self.identifier = identifier
+        self.last_actor = None # person that last acted, i.e. person to your right
 
     def update_state(self, states, hidden):
         self.states = states
@@ -15,12 +16,23 @@ class ChrisBot(Bot):
 
     def take_action(self):
         if self.states[self.identifier].coins >= 7:
-            active = [x.identifier for x in self.states if len(x.flipped) < 2]
-            active.remove(self.identifier)
-            target = random.choice(active)
+            target = self.choose_target()
             return TargetedAction(Action.coup, target)
         else:
             return Action.income
+
+    def choose_target(self):
+        # return the person to your right
+        if (len(self.states[self.last_actor].flipped) < 2):
+            return self.last_actor
+        else:
+            return self.choose_random_target()
+
+    def choose_random_target(self):
+        active = [x.identifier for x in self.states if len(x.flipped) < 2]
+        active.remove(self.identifier)
+        target = random.choice(active)
+        return target
 
     def block_action(self, actor, action, character, target):
         block_with = None
@@ -40,6 +52,9 @@ class ChrisBot(Bot):
                 block_with = Character.captain
 
         return block_with
+
+    def notify_action(self, actor, action, target, succeeded):
+        self.last_actor = actor
 
     def flip(self):
         if len(self.hidden) > 1:
