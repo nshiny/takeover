@@ -99,9 +99,18 @@ def compete(names, matches, iterations, ratings, parallel):
     metrics = {x : {} for x in names}
     for name, wins, played in sorted(
         totals, key=lambda x: x[1] / x[2], reverse=True):
+
+        rate = "%.4f" % (wins / played)
+
         metrics[name]["Wins"] = wins
         metrics[name]["Played"] = played
-        metrics[name]["Rate"] = "%.4f" % (wins / played)
+        metrics[name]["Rate"] = rate
+
+        print(name)
+        print("   ", "Wins:", wins)
+        print("   ", "Played:", played)
+        print("   ", "Rate:", rate)
+        print("")
         
     if ratings:
         rate_skill(names, results, metrics)
